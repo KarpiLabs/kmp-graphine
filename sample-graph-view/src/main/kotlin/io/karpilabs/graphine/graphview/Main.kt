@@ -1,6 +1,9 @@
 package io.karpilabs.graphine.graphview
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -284,6 +287,10 @@ private fun GraphViewDemo() {
     }
     var animationRunning by remember { mutableStateOf(true) }
     var viewportSize by remember { mutableStateOf(IntSize.Zero) }
+    // While hovering the settings panel, disable graph pan/zoom so trackpad
+    // gestures scroll the menu instead of panning the canvas.
+    val settingsInteraction = remember { MutableInteractionSource() }
+    val settingsHovered by settingsInteraction.collectIsHoveredAsState()
 
     var baseRadius by remember { mutableStateOf(2.8f) }
     val dotStyle = remember(baseRadius, colorByNodeId) {
@@ -366,7 +373,8 @@ private fun GraphViewDemo() {
             onAnimationRunningChanged = { animationRunning = it },
             modifier = Modifier
                 .width(300.dp)
-                .fillMaxHeight(),
+                .fillMaxHeight()
+                .hoverable(settingsInteraction),
         )
 
         Box(
@@ -381,6 +389,8 @@ private fun GraphViewDemo() {
                 modifier = Modifier.fillMaxSize(),
                 edgeConfig = edgeConfig,
                 showGrid = false,
+                enableZoom = !settingsHovered,
+                enablePanning = !settingsHovered,
                 enablePathHighlighting = true,
                 nodeRenderMode = NodeRenderMode.DOT,
                 dotStyle = dotStyle,
