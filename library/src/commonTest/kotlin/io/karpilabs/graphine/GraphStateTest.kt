@@ -18,9 +18,12 @@ package io.karpilabs.graphine
 
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.unit.IntSize
+import io.karpilabs.graphine.model.GraphEdge
 import io.karpilabs.graphine.model.GraphNode
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 class GraphStateTest {
     @Test
@@ -55,5 +58,118 @@ class GraphStateTest {
         state.onNodeDragged("1", Offset(62f, 22f))
 
         assertEquals(Offset(50f, 0f), state.nodeStates["1"]?.position)
+    }
+
+    @Test
+    fun testNodeDegreesBasic() {
+        val n1 = GraphNode("1", "Hub")
+        val n2 = GraphNode("2", "Leaf1")
+        val n3 = GraphNode("3", "Leaf2")
+        val n4 = GraphNode("4", "Isolated")
+
+        val edges = listOf(
+            GraphEdge("1", "2"),
+            GraphEdge("1", "3"),
+            GraphEdge("2", "3"),
+        )
+
+        val state = GraphState(
+            initialNodes = listOf(n1, n2, n3, n4),
+            initialEdges = edges,
+        )
+
+        // Node 1: connected to 2, 3 = degree 2
+        // Node 2: connected from 1, to 3 = degree 2
+        // Node 3: connected from 1, 2 = degree 2
+        // Node 4: isolated = degree 0 (not in map)
+        assertEquals(2, state.nodeDegrees["1"])
+        assertEquals(2, state.nodeDegrees["2"])
+        assertEquals(2, state.nodeDegrees["3"])
+        assertEquals(null, state.nodeDegrees["4"])
+    }
+
+    @Test
+    fun testNodeDegreesUpdate() {
+        val n1 = GraphNode("1", "Node1")
+        val n2 = GraphNode("2", "Node2")
+        val n3 = GraphNode("3", "Node3")
+
+        val state = GraphState(
+            initialNodes = listOf(n1, n2, n3),
+            initialEdges = listOf(GraphEdge("1", "2")),
+        )
+
+        assertEquals(1, state.nodeDegrees["1"])
+        assertEquals(1, state.nodeDegrees["2"])
+
+        // Add an edge
+        state.edges = listOf(
+            GraphEdge("1", "2"),
+            GraphEdge("1", "3"),
+        )
+
+        assertEquals(2, state.nodeDegrees["1"])
+        assertEquals(1, state.nodeDegrees["2"])
+        assertEquals(1, state.nodeDegrees["3"])
+    }
+
+    @Test
+    fun testIsNodeVisibleHandlesCycles() {
+        // Ring graph: 1 → 2 → 3 → 1 (cyclic edges)
+        val nodes = listOf(
+            GraphNode("1", "A"),
+            GraphNode("2", "B"),
+            GraphNode("3", "C"),
+        )
+        val edges = listOf(
+            GraphEdge("1", "2"),
+            GraphEdge("2", "3"),
+            GraphEdge("3", "1"),
+        )
+        val state = GraphState(initialNodes = nodes, initialEdges = edges)
+
+        // Must terminate and report all nodes visible (nothing collapsed).
+        assertTrue(state.isNodeVisible("1"))
+        assertTrue(state.isNodeVisible("2"))
+        assertTrue(state.isNodeVisible("3"))
+    }
+
+    @Test
+    fun testIsNodeVisibleRespectsCollapseOnTree() {
+        val nodes = listOf(
+            GraphNode("1", "Root"),
+            GraphNode("2", "Child"),
+            GraphNode("3", "Grandchild"),
+        )
+        val edges = listOf(
+            GraphEdge("1", "2"),
+            GraphEdge("2", "3"),
+        )
+        val state = GraphState(initialNodes = nodes, initialEdges = edges)
+        state.toggleCollapse("1")
+
+        assertTrue(state.isNodeVisible("1"))
+        assertFalse(state.isNodeVisible("2"))
+        assertFalse(state.isNodeVisible("3"))
+    }
+
+    @Test
+    fun testHighlightPathHandlesCycles() {
+        val nodes = listOf(
+            GraphNode("1", "A"),
+            GraphNode("2", "B"),
+            GraphNode("3", "C"),
+        )
+        val edges = listOf(
+            GraphEdge("1", "2"),
+            GraphEdge("2", "3"),
+            GraphEdge("3", "1"),
+        )
+        val state = GraphState(initialNodes = nodes, initialEdges = edges)
+
+        // Must terminate on a cycle without hanging.
+        state.highlightPath("1")
+        assertTrue(state.highlightedNodeIds.contains("1"))
+        assertTrue(state.highlightedNodeIds.isNotEmpty())
     }
 }

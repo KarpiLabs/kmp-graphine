@@ -20,6 +20,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.VectorConverter
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateMapOf
@@ -44,7 +45,7 @@ class GraphState<T>(
     initialNodes: List<GraphNode<T>> = emptyList(),
     initialEdges: List<GraphEdge> = emptyList(),
     initialGroups: List<GraphGroup> = emptyList(),
-    val config: GraphConfig = GraphConfig(),
+    initialConfig: GraphConfig = GraphConfig(),
 ) {
     private val _nodeStates = mutableStateMapOf<String, GraphNodeState<T>>().apply {
         initialNodes.forEach { put(it.id, GraphNodeState(it)) }
@@ -61,23 +62,35 @@ class GraphState<T>(
     /** Logical clusters of nodes. */
     var groups by mutableStateOf(initialGroups)
 
+    /** Global visual / interaction settings (zoom thresholds, padding, etc.). */
+    var config by mutableStateOf(initialConfig)
+
     /** The current zoom level (0.1 to 5.0). */
     var scale by mutableFloatStateOf(1f)
 
     /** The current pan offset of the canvas. */
     var offset by mutableStateOf(Offset.Zero)
 
+    /**
+     * Map of [GraphNode.id] to the node's degree (total in + out edges).
+     * Recomputed whenever edges change.
+     */
+    val nodeDegrees: Map<String, Int> by derivedStateOf { computeNodeDegrees() }
+
     // Animation controllers
     internal val scaleAnim = Animatable(1f)
     internal val offsetAnim = Animatable(Offset.Zero, Offset.VectorConverter)
 
+    /**
+     * Instantly set the camera. Animatables are snapped first so a concurrent
+     * composition cannot read stale anim values and clobber the new frame.
+     */
     suspend fun snapTo(targetScale: Float, targetOffset: Offset) {
-        scale = targetScale
+        val s = targetScale.coerceIn(config.minScale, config.maxScale)
+        scaleAnim.snapTo(s)
+        offsetAnim.snapTo(targetOffset)
+        scale = s
         offset = targetOffset
-        coroutineScope {
-            launch { scaleAnim.snapTo(targetScale) }
-            launch { offsetAnim.snapTo(targetOffset) }
-        }
     }
 
     /**
@@ -203,10 +216,18 @@ class GraphState<T>(
 
     /**
      * Checks if a node is currently hidden due to an ancestor being collapsed.
+     *
+     * Walks the "parent" chain via edges (`to == current`). Safe for cyclic graphs:
+     * visited nodes are tracked so a cycle cannot cause an infinite loop.
      */
     fun isNodeVisible(nodeId: String): Boolean {
+        // Fast path: nothing collapsed → every node is visible (critical for 1000+ node DOT graphs).
+        if (collapsedNodeIds.isEmpty()) return true
+
+        val visited = mutableSetOf<String>()
         var current: String? = edges.find { it.to == nodeId }?.from
         while (current != null) {
+            if (!visited.add(current)) break // cycle detected
             if (collapsedNodeIds.contains(current)) return false
             current = edges.find { it.to == current }?.from
         }
@@ -261,40 +282,93 @@ class GraphState<T>(
     }
 
     /**
-     * Adjusts the viewport to show all nodes with optional padding.
+     * Adjusts the viewport so the graph content fits and is centered.
+     *
+     * @param viewportWidth Visible canvas width in pixels.
+     * @param viewportHeight Visible canvas height in pixels.
+     * @param padding Extra space around the fitted bounds (content units after scale).
+     * @param trimFraction Fraction of extreme positions to ignore on each side (0–0.45).
+     *   Use a small value (e.g. 0.05–0.1) to frame the main cluster while discarding
+     *   sparse outer outliers (orphan rings, far leaves). 0 keeps full min/max bounds.
+     * @param immediate When true, snaps the camera with no animation (best for first paint).
      */
     suspend fun fitToScreenAnimated(
         viewportWidth: Float,
         viewportHeight: Float,
         padding: Float = config.fitToScreenPadding,
+        trimFraction: Float = 0f,
+        immediate: Boolean = false,
     ) {
-        if (_nodeStates.isEmpty()) return
+        if (_nodeStates.isEmpty() || viewportWidth <= 0f || viewportHeight <= 0f) return
 
-        var minX = Float.MAX_VALUE
-        var minY = Float.MAX_VALUE
-        var maxX = Float.MIN_VALUE
-        var maxY = Float.MIN_VALUE
+        val bounds = computeFitBounds(trimFraction) ?: return
+        if (bounds.width <= 0f && bounds.height <= 0f) return
 
-        _nodeStates.values.forEach {
-            minX = minOf(minX, it.position.x)
-            minY = minOf(minY, it.position.y)
-            maxX = maxOf(maxX, it.position.x)
-            maxY = maxOf(maxY, it.position.y)
-        }
+        // Ensure degenerate / single-point layouts still get a usable frame.
+        val minSpan = 80f
+        val spanX = bounds.width.coerceAtLeast(minSpan)
+        val spanY = bounds.height.coerceAtLeast(minSpan)
+        val contentWidth = spanX + padding * 2f
+        val contentHeight = spanY + padding * 2f
 
-        val contentWidth = (maxX - minX) + (padding * 2)
-        val contentHeight = (maxY - minY) + (padding * 2)
+        val targetScale = minOf(
+            viewportWidth / contentWidth,
+            viewportHeight / contentHeight,
+        ).coerceIn(config.minScale, config.maxScale.coerceAtMost(3f))
 
-        val targetScale = minOf(viewportWidth / contentWidth, viewportHeight / contentHeight).coerceIn(0.1f, 2.0f)
-        val centerX = (minX + maxX) / 2
-        val centerY = (minY + maxY) / 2
-
+        val centerX = bounds.left + bounds.width / 2f
+        val centerY = bounds.top + bounds.height / 2f
         val targetOffset = Offset(
-            (viewportWidth / 2) - (centerX * targetScale),
-            (viewportHeight / 2) - (centerY * targetScale),
+            (viewportWidth / 2f) - (centerX * targetScale),
+            (viewportHeight / 2f) - (centerY * targetScale),
         )
 
-        animateTo(targetScale, targetOffset, viewportWidth, viewportHeight)
+        // Don't run coerceOffset here — it uses full content bounds (including outliers)
+        // and can undo a carefully trimmed, centered fit.
+        if (immediate) {
+            snapTo(targetScale, targetOffset)
+        } else {
+            coroutineScope {
+                launch {
+                    scaleAnim.animateTo(targetScale, tween(500)) { scale = value }
+                }
+                launch {
+                    offsetAnim.animateTo(targetOffset, tween(500)) { offset = value }
+                }
+            }
+        }
+    }
+
+    /**
+     * Bounding box used by [fitToScreenAnimated].
+     * When [trimFraction] > 0, uses independent X/Y percentiles so sparse outer nodes
+     * (e.g. a decorative ring) do not force the camera to zoom out too far.
+     */
+    fun computeFitBounds(trimFraction: Float = 0f): Rect? {
+        val points = _nodeStates.values.map { it.position }
+        if (points.isEmpty()) return null
+
+        val trim = trimFraction.coerceIn(0f, 0.45f)
+        if (trim <= 0f || points.size < 8) {
+            var minX = Float.MAX_VALUE
+            var minY = Float.MAX_VALUE
+            var maxX = Float.MIN_VALUE
+            var maxY = Float.MIN_VALUE
+            points.forEach { p ->
+                minX = minOf(minX, p.x)
+                minY = minOf(minY, p.y)
+                maxX = maxOf(maxX, p.x)
+                maxY = maxOf(maxY, p.y)
+            }
+            return Rect(minX, minY, maxX, maxY)
+        }
+
+        val xs = points.map { it.x }.sorted()
+        val ys = points.map { it.y }.sorted()
+        val last = xs.lastIndex
+        val lo = (trim * last).toInt().coerceIn(0, last)
+        val hi = ((1f - trim) * last).toInt().coerceIn(lo, last)
+        return Rect(xs[lo], ys[lo], xs[hi], ys[hi])
     }
 
     /**
@@ -311,11 +385,11 @@ class GraphState<T>(
         val edges = mutableSetOf<Pair<String, String>>()
         nodes.add(nodeId)
 
+        // Walk ancestors; stop if we re-visit a node (handles cyclic graphs).
         var current: String? = nodeId
         while (current != null) {
             val parentEdge = this.edges.find { it.to == current }
-            if (parentEdge != null) {
-                nodes.add(parentEdge.from)
+            if (parentEdge != null && nodes.add(parentEdge.from)) {
                 edges.add(parentEdge.from to parentEdge.to)
                 current = parentEdge.from
             } else {
@@ -348,12 +422,27 @@ class GraphState<T>(
 
     /**
      * Manually update the position of multiple nodes.
+     * Skips entries whose position is unchanged to reduce snapshot churn on large graphs.
      */
     fun setNodePositions(positions: Map<String, Offset>) {
         positions.forEach { (id, pos) ->
             val current = _nodeStates[id] ?: return@forEach
-            _nodeStates[id] = current.copy(position = pos)
+            if (current.position != pos) {
+                _nodeStates[id] = current.copy(position = pos)
+            }
         }
+    }
+
+    /**
+     * Computes the degree (in + out edge count) for each node.
+     */
+    private fun computeNodeDegrees(): Map<String, Int> {
+        val degrees = mutableMapOf<String, Int>()
+        edges.forEach { edge ->
+            degrees[edge.from] = (degrees[edge.from] ?: 0) + 1
+            degrees[edge.to] = (degrees[edge.to] ?: 0) + 1
+        }
+        return degrees
     }
 }
 
@@ -365,4 +454,7 @@ fun <T> rememberGraphState(
     nodes: List<GraphNode<T>> = emptyList(),
     edges: List<GraphEdge> = emptyList(),
     groups: List<GraphGroup> = emptyList(),
-): GraphState<T> = remember(nodes, edges, groups) { GraphState(nodes, edges, groups) }
+    config: GraphConfig = GraphConfig(),
+): GraphState<T> = remember(nodes, edges, groups) {
+    GraphState(nodes, edges, groups, config)
+}

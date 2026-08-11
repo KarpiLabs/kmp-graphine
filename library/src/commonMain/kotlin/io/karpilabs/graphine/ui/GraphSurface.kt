@@ -19,6 +19,8 @@ package io.karpilabs.graphine.ui
 import androidx.compose.animation.core.exponentialDecay
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.rememberTransformableState
@@ -46,26 +48,39 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.changedToUpIgnoreConsumed
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChanged
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.toSize
 import io.karpilabs.graphine.GraphState
+import io.karpilabs.graphine.model.DotStyle
 import io.karpilabs.graphine.model.EdgeConfig
+import io.karpilabs.graphine.model.EdgeStyle
 import io.karpilabs.graphine.model.GraphGroup
 import io.karpilabs.graphine.model.GraphNode
+import io.karpilabs.graphine.model.NodeRenderMode
 import kotlinx.coroutines.launch
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.roundToInt
 import kotlin.math.sin
+import kotlin.math.sqrt
 
 /**
  * The main UI entry point for KmpGraphine.
  *
  * Provides a high-performance, zoomable, and interactive canvas for visualizing nodes and edges.
  * Supports inertia panning, group zones, and semantic zoom.
+ *
+ * @param nodeRenderMode Determines how nodes are rendered: [NodeRenderMode.COMPOSABLE] for rich content,
+ *                       [NodeRenderMode.DOT] for lightweight canvas-drawn dots.
+ * @param dotStyle Visual styling for dots in [NodeRenderMode.DOT] mode. Ignored in [NodeRenderMode.COMPOSABLE] mode.
+ * @param onNodeDragged Optional callback while a node is being dragged (each move). Useful for pinning/syncing physics.
+ * @param onNodeDragEnd Optional callback when a node drag gesture ends. Useful for unpinning a simulated node.
+ * @param nodeContent Composable content for each node. Required for [NodeRenderMode.COMPOSABLE], ignored for [NodeRenderMode.DOT].
  */
 @Composable
 fun <T> GraphSurface(
@@ -81,17 +96,25 @@ fun <T> GraphSurface(
     enableZoom: Boolean = true,
     enablePanning: Boolean = true,
     enablePathHighlighting: Boolean = true,
+    nodeRenderMode: NodeRenderMode = NodeRenderMode.COMPOSABLE,
+    dotStyle: DotStyle<T> = DotStyle(),
     onNodeClick: ((GraphNode<T>) -> Unit)? = null,
     onNodeLongClick: ((GraphNode<T>) -> Unit)? = null,
-    nodeContent: @Composable (node: GraphNode<T>, isDetailVisible: Boolean) -> Unit,
+    onNodeDragged: ((GraphNode<T>) -> Unit)? = null,
+    onNodeDragEnd: ((GraphNode<T>) -> Unit)? = null,
+    nodeContent: (@Composable (node: GraphNode<T>, isDetailVisible: Boolean) -> Unit)? = null,
 ) {
+    require(nodeRenderMode != NodeRenderMode.COMPOSABLE || nodeContent != null) {
+        "nodeContent is required when nodeRenderMode is COMPOSABLE"
+    }
     val scope = rememberCoroutineScope()
     var surfaceSize by remember { mutableStateOf(Size.Zero) }
     val resolvedGridColor = gridColor ?: MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
 
-    // Sync state values with animatables
-    state.offset = state.offsetAnim.value
-    state.scale = state.scaleAnim.value
+    // IMPORTANT: do NOT assign `state.offset/scale = anim.value` every composition.
+    // That races with fitToScreen/snapTo and silently undoes the initial camera frame
+    // (animatables lag one frame behind the state fields). Camera fields on GraphState
+    // are the source of truth for rendering; animatables follow for inertia/animation.
 
     val transformState = rememberTransformableState { centroid, zoomChange, offsetChange, _ ->
         val pivot = if (zoomFromCenter || surfaceSize == Size.Zero) {
@@ -101,7 +124,10 @@ fun <T> GraphSurface(
         }
 
         val oldScale = state.scale
-        val newScale = (state.scale * zoomChange).coerceIn(0.1f, 5f)
+        val newScale = (state.scale * zoomChange).coerceIn(
+            state.config.minScale,
+            state.config.maxScale,
+        )
 
         // Calculate translation needed to keep the pivot point stationary in content space
         val contentPivotX = (pivot.x - state.offset.x) / oldScale
@@ -128,7 +154,7 @@ fun <T> GraphSurface(
         }
     }
 
-    val isDetailVisible = state.scale > 0.6f
+    val isDetailVisible = state.scale > state.config.detailZoomThreshold
 
     Box(
         modifier = modifier
@@ -172,7 +198,15 @@ fun <T> GraphSurface(
                             state.offsetAnim.animateDecay(
                                 Offset(velocity.x, velocity.y),
                                 exponentialDecay(),
-                            )
+                            ) {
+                                // Keep public camera state in lockstep with inertia.
+                                state.offset = state.coerceOffset(
+                                    value,
+                                    surfaceSize.width,
+                                    surfaceSize.height,
+                                    state.scale,
+                                )
+                            }
                         }
                     },
                 )
@@ -209,54 +243,199 @@ fun <T> GraphSurface(
                         state.highlightedEdgeIds.contains(edge.from to edge.to)
 
                     val pathAlpha = if (isHighlighted) 1.0f else 0.1f
-                    val path = Path().apply {
-                        moveTo(fromPos.x, fromPos.y)
-                        cubicTo(fromPos.x, (fromPos.y + toPos.y) / 2, toPos.x, (fromPos.y + toPos.y) / 2, toPos.x, toPos.y)
-                    }
-
                     val baseColor = edgeConfig.color.copy(alpha = edgeConfig.color.alpha * pathAlpha)
-                    val brush = Brush.linearGradient(
-                        colors = listOf(baseColor, baseColor.copy(alpha = 0.1f * pathAlpha)),
-                        start = fromPos,
-                        end = toPos,
-                    )
 
-                    drawPath(path = path, brush = brush, style = Stroke(width = edgeConfig.width, cap = StrokeCap.Round, pathEffect = edgeConfig.pathEffect))
+                    when (edgeConfig.style) {
+                        EdgeStyle.STRAIGHT -> {
+                            drawLine(
+                                color = baseColor,
+                                start = fromPos,
+                                end = toPos,
+                                strokeWidth = edgeConfig.width,
+                                cap = edgeConfig.strokeCap,
+                                pathEffect = edgeConfig.pathEffect,
+                            )
+                        }
+                        EdgeStyle.CURVED -> {
+                            val path = Path().apply {
+                                moveTo(fromPos.x, fromPos.y)
+                                cubicTo(
+                                    fromPos.x,
+                                    (fromPos.y + toPos.y) / 2,
+                                    toPos.x,
+                                    (fromPos.y + toPos.y) / 2,
+                                    toPos.x,
+                                    toPos.y,
+                                )
+                            }
+                            val brush = Brush.linearGradient(
+                                colors = listOf(baseColor, baseColor.copy(alpha = 0.1f * pathAlpha)),
+                                start = fromPos,
+                                end = toPos,
+                            )
+                            drawPath(
+                                path = path,
+                                brush = brush,
+                                style = Stroke(
+                                    width = edgeConfig.width,
+                                    cap = edgeConfig.strokeCap,
+                                    pathEffect = edgeConfig.pathEffect,
+                                ),
+                            )
+                        }
+                    }
                     if (edgeConfig.showArrowheads) drawArrowhead(toPos, fromPos, edgeConfig, pathAlpha)
                 }
             }
 
             // 3. Nodes
-            state.nodeStates.forEach { (id, nodeState) ->
-                if (!state.isNodeVisible(id)) return@forEach
-                val isHighlighted = state.highlightedNodeIds.isEmpty() || state.highlightedNodeIds.contains(id)
-                val nodeAlpha = if (isHighlighted) 1.0f else 0.2f
+            if (nodeRenderMode == NodeRenderMode.COMPOSABLE) {
+                state.nodeStates.forEach { (id, nodeState) ->
+                    if (!state.isNodeVisible(id)) return@forEach
+                    val isHighlighted = state.highlightedNodeIds.isEmpty() || state.highlightedNodeIds.contains(id)
+                    val nodeAlpha = if (isHighlighted) 1.0f else 0.2f
 
-                Box(
+                    Box(
+                        modifier = Modifier
+                            .offset { IntOffset(nodeState.position.x.roundToInt(), nodeState.position.y.roundToInt()) }
+                            .graphicsLayer { alpha = nodeAlpha }
+                            .onGloballyPositioned { state.onNodeResized(id, it.size) }
+                            .pointerInput(id) {
+                                detectTapGestures(
+                                    onTap = {
+                                        if (enablePathHighlighting) state.highlightPath(id)
+                                        onNodeClick?.invoke(nodeState.node)
+                                    },
+                                    onLongPress = {
+                                        state.toggleCollapse(id)
+                                        onNodeLongClick?.invoke(nodeState.node)
+                                    },
+                                )
+                            }
+                            .pointerInput(id) {
+                                detectDragGestures(
+                                    onDragEnd = { onNodeDragEnd?.invoke(nodeState.node) },
+                                    onDragCancel = { onNodeDragEnd?.invoke(nodeState.node) },
+                                    onDrag = { change, dragAmount ->
+                                        change.consume()
+                                        state.onNodeDragged(id, dragAmount / state.scale)
+                                        onNodeDragged?.invoke(nodeState.node)
+                                    },
+                                )
+                            },
+                    ) {
+                        nodeContent?.invoke(nodeState.node, isDetailVisible)
+                    }
+                }
+            } else {
+                // DOT mode: single Canvas pass for all dots.
+                // Pointer handling must NOT consume empty-space drags — those belong to the
+                // parent pan handler. Only claim the gesture when the pointer is on a node.
+                Canvas(
                     modifier = Modifier
-                        .offset { IntOffset(nodeState.position.x.roundToInt(), nodeState.position.y.roundToInt()) }
-                        .graphicsLayer { alpha = nodeAlpha }
-                        .onGloballyPositioned { state.onNodeResized(id, it.size) }
-                        .pointerInput(id) {
-                            detectTapGestures(
-                                onTap = {
-                                    if (enablePathHighlighting) state.highlightPath(id)
-                                    onNodeClick?.invoke(nodeState.node)
-                                },
-                                onLongPress = {
-                                    state.toggleCollapse(id)
-                                    onNodeLongClick?.invoke(nodeState.node)
-                                },
-                            )
-                        }
-                        .pointerInput(id) {
-                            detectDragGestures { change, dragAmount ->
-                                change.consume()
-                                state.onNodeDragged(id, dragAmount / state.scale)
+                        .fillMaxSize()
+                        .pointerInput(dotStyle, enablePathHighlighting, enablePanning) {
+                            // This Canvas sits above the parent pan handler and would otherwise
+                            // swallow every drag. Handle both cases here:
+                            //  - pointer on a node  → drag that node
+                            //  - empty space        → pan the viewport
+                            awaitEachGesture {
+                                val down = awaitFirstDown(requireUnconsumed = false)
+                                val hit = findNearestNodeAtPosition(down.position, state, dotStyle)
+
+                                if (hit == null) {
+                                    if (!enablePanning) return@awaitEachGesture
+                                    // Empty-space pan. Local deltas are in content space
+                                    // (inside graphicsLayer); convert to screen space for offset.
+                                    scope.launch { state.offsetAnim.stop() }
+                                    val velocityTracker = VelocityTracker()
+                                    velocityTracker.addPosition(down.uptimeMillis, down.position)
+                                    while (true) {
+                                        val event = awaitPointerEvent()
+                                        val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                                        if (change.changedToUpIgnoreConsumed()) {
+                                            val velocity = velocityTracker.calculateVelocity()
+                                            // Velocity is in content space; convert to screen space.
+                                            val screenVel = Offset(
+                                                velocity.x * state.scale,
+                                                velocity.y * state.scale,
+                                            )
+                                            scope.launch {
+                                                state.offsetAnim.animateDecay(screenVel, exponentialDecay())
+                                            }
+                                            break
+                                        }
+                                        if (change.pressed && change.positionChanged()) {
+                                            change.consume()
+                                            val contentDelta = change.position - change.previousPosition
+                                            val screenDelta = contentDelta * state.scale
+                                            velocityTracker.addPosition(change.uptimeMillis, change.position)
+                                            val newOffset = state.coerceOffset(
+                                                state.offset + screenDelta,
+                                                surfaceSize.width,
+                                                surfaceSize.height,
+                                                state.scale,
+                                            )
+                                            state.offset = newOffset
+                                            scope.launch { state.offsetAnim.snapTo(newOffset) }
+                                        }
+                                    }
+                                    return@awaitEachGesture
+                                }
+
+                                val (nodeId, node) = hit
+                                var dragging = false
+                                val touchSlop = viewConfiguration.touchSlop
+                                var totalDrag = 0f
+
+                                while (true) {
+                                    val event = awaitPointerEvent()
+                                    val change = event.changes.firstOrNull { it.id == down.id } ?: break
+
+                                    if (change.changedToUpIgnoreConsumed()) {
+                                        if (dragging) {
+                                            onNodeDragEnd?.invoke(node)
+                                        } else {
+                                            if (enablePathHighlighting) state.highlightPath(nodeId)
+                                            onNodeClick?.invoke(node)
+                                        }
+                                        break
+                                    }
+
+                                    if (change.pressed && change.positionChanged()) {
+                                        val delta = change.position - change.previousPosition
+                                        totalDrag += delta.getDistance()
+                                        if (!dragging && totalDrag >= touchSlop) {
+                                            dragging = true
+                                        }
+                                        if (dragging) {
+                                            change.consume()
+                                            // Local coords are content-space (inside graphicsLayer).
+                                            state.onNodeDragged(nodeId, delta)
+                                            onNodeDragged?.invoke(node)
+                                        }
+                                    }
+                                }
                             }
                         },
                 ) {
-                    nodeContent(nodeState.node, isDetailVisible)
+                    // Draw all dots in this Canvas pass
+                    state.nodeStates.forEach { (id, nodeState) ->
+                        if (!state.isNodeVisible(id)) return@forEach
+
+                        val degree = state.nodeDegrees[id] ?: 0
+                        val radius = dotStyle.computeRadius(degree)
+                        val dotColor = dotStyle.color(nodeState.node, degree)
+
+                        val isHighlighted = state.highlightedNodeIds.isEmpty() || state.highlightedNodeIds.contains(id)
+                        val nodeAlpha = if (isHighlighted) 1.0f else 0.2f
+
+                        drawCircle(
+                            color = dotColor.copy(alpha = dotColor.alpha * nodeAlpha),
+                            radius = radius,
+                            center = nodeState.position,
+                        )
+                    }
                 }
             }
         }
@@ -302,4 +481,45 @@ private fun DrawScope.drawGroupZone(group: GraphGroup, state: GraphState<*>) {
         cornerRadius = CornerRadius(32f),
         style = Stroke(width = 1.5f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(15f, 15f), 0f)),
     )
+}
+
+/**
+ * Finds the nearest node to a pointer position in DOT mode.
+ *
+ * The dot [Canvas] lives inside the content [graphicsLayer], so [localPosition] is already
+ * in content space (node positions). No inverse scale/offset is required.
+ *
+ * @param localPosition Pointer position in content coordinates.
+ * @param state The graph state.
+ * @param dotStyle The dot styling configuration.
+ * @return A pair of (nodeId, GraphNode) if a node is within hit distance, or null.
+ */
+private fun <T> findNearestNodeAtPosition(
+    localPosition: Offset,
+    state: GraphState<T>,
+    dotStyle: DotStyle<T>,
+): Pair<String, GraphNode<T>>? {
+    var nearestNode: Pair<String, GraphNode<T>>? = null
+    var nearestDistance = Float.MAX_VALUE
+
+    state.nodeStates.forEach { (id, nodeState) ->
+        if (!state.isNodeVisible(id)) return@forEach
+
+        val degree = state.nodeDegrees[id] ?: 0
+        val radius = dotStyle.computeRadius(degree)
+
+        val dx = localPosition.x - nodeState.position.x
+        val dy = localPosition.y - nodeState.position.y
+        val distance = sqrt(dx * dx + dy * dy)
+
+        // Tight enough that empty space remains pannable in dense graphs.
+        val hitDistance = (radius * 2.5f).coerceAtLeast(8f)
+
+        if (distance < hitDistance && distance < nearestDistance) {
+            nearestDistance = distance
+            nearestNode = id to nodeState.node
+        }
+    }
+
+    return nearestNode
 }
