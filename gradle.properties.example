@@ -1,1 +1,8 @@
-ossrhUsername=\nossrhPassword=\nsigning.keyId=\nsigning.password=\nsigning.secretKeyRingFile=
+# Maven Central Publishing
+mavenCentralUsername=
+mavenCentralPassword=
+
+# GPG Signing
+signing.keyId=LAST_8_CHARS_OF_KEY_ID
+signing.password=
+signing.secretKeyRingFile=/path/to/secring.gpg

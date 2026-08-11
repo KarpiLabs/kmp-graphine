@@ -67,6 +67,21 @@ Box(Modifier.fillMaxSize()) {
 }
 ```
 
+## Sample apps
+Two runnable Compose Desktop apps demonstrate the library.
+
+**`sample`** — a minimal org chart mirroring the [Usage](#usage) snippets above: just `GraphSurface` with a handful of nodes and edges.
+
+```bash
+./gradlew :sample:run
+```
+
+**`sample-showcase`** — a "maxed out" demo exercising most of the library's surface: switchable `TreeLayout` (straight and radial) and `ForceDirectedLayout`, `GraphGroup` department zones, arrowhead edges, path highlighting, semantic zoom, and the built-in `Minimap`, `GraphControls`, `ZoomControls`, and `GraphSearch` overlays.
+
+```bash
+./gradlew :sample-showcase:run
+```
+
 ## Real world example: Investigo
 In the **Investigo** app, KmpGraphine is used to visualize large corporate ownership trees.
 
@@ -76,26 +91,7 @@ In the **Investigo** app, KmpGraphine is used to visualize large corporate owner
 
 ## Publishing
 
-KmpGraphine is configured for publishing to Maven Central (OSSRH) and local repositories.
-
-### Local Installation
-To test the library in another project locally:
-```bash
-./gradlew publishAllPublicationsToMavenLocal
-```
-
-### Maven Central (OSSRH)
-1. Add your credentials to `gradle.properties`:
-   - `ossrhUsername`: Your Sonatype Jira username.
-   - `ossrhPassword`: Your Sonatype Jira password.
-   - `signing.keyId`: Your GPG key ID (last 8 characters).
-   - `signing.password`: Your GPG key passphrase.
-   - `signing.secretKeyRingFile`: Path to your exported secret key file (`.gpg` or `.kbx`).
-
-2. Run the deployment task:
-```bash
-./gradlew publishAllPublicationsToOSSRHRepository
-```
+For instructions on publishing to Maven Central, see [PUBLISHING.md](PUBLISHING.md).
 
 ## Library roadmap
 - Edge routing to avoid node overlap

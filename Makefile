@@ -2,7 +2,7 @@
 
 GRADLEW := ./gradlew
 
-.PHONY: help build clean test check lint format
+.PHONY: help build clean test check lint format sample
 
 help: ## Show available targets
 	@printf "Available targets:\n"
@@ -22,6 +22,9 @@ format: ## Format source code (Spotless)
 
 test: ## Run tests
 	@$(GRADLEW) test
+
+sample: ## Run the sample JVM application
+	@$(GRADLEW) :sample:run
 
 clean: ## Clean build outputs
 	@$(GRADLEW) clean

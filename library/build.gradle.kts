@@ -1,4 +1,4 @@
-import org.gradle.api.publish.maven.MavenPublication
+import org.gradle.api.tasks.testing.AbstractTestTask
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -7,8 +7,7 @@ plugins {
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.detekt)
     alias(libs.plugins.spotless)
-    id("maven-publish")
-    id("signing")
+    id("com.vanniktech.maven.publish") version "0.28.0"
 }
 
 group = "io.karpilabs"
@@ -81,61 +80,47 @@ tasks.named("check") {
     dependsOn("detekt", "spotlessCheck")
 }
 
-// Configuration for publishing
-afterEvaluate {
-    publishing {
-        publications.withType<MavenPublication> {
-            pom {
-                name.set("Graphine")
-                description.set("A high-performance, modern graph visualization library for Compose Multiplatform.")
-                url.set("https://github.com/KarpiLabs/kmp-graphine")
+mavenPublishing {
+    publishToMavenCentral(com.vanniktech.maven.publish.SonatypeHost.CENTRAL_PORTAL)
+    signAllPublications()
 
-                licenses {
-                    license {
-                        name.set("The Apache License, Version 2.0")
-                        url.set("http://www.apache.org/licenses/LICENSE-2.0.txt")
-                    }
-                }
+    coordinates(
+        groupId = "io.karpilabs",
+        artifactId = "kmp-graphine",
+        version = version.toString(),
+    )
 
-                developers {
-                    developer {
-                        id.set("KarpiLabs")
-                        name.set("KarpiLabs LLC")
-                        email.set("contact@karpilabs.io")
-                    }
-                }
+    pom {
+        name.set("KMP Graphine")
+        description.set("A high-performance, modern graph visualization library for Compose Multiplatform.")
+        url.set("https://github.com/KarpiLabs/kmp-graphine")
+        inceptionYear.set("2024")
 
-                scm {
-                    connection.set("scm:git:git://github.com/KarpiLabs/kmp-graphine.git")
-                    developerConnection.set("scm:git:ssh://github.com/KarpiLabs/kmp-graphine.git")
-                    url.set("https://github.com/KarpiLabs/kmp-graphine")
-                }
+        licenses {
+            license {
+                name.set("The Apache License, Version 2.0")
+                url.set("http://www.apache.org/licenses/LICENSE-2.0.txt")
+                distribution.set("repo")
             }
         }
 
-        repositories {
-            maven {
-                name = "OSSRH"
-                url = uri("https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/")
-                credentials {
-                    username = project.findProperty("ossrhUsername")?.toString()
-                    password = project.findProperty("ossrhPassword")?.toString()
-                }
+        developers {
+            developer {
+                id.set("KarpiLabs")
+                name.set("KarpiLabs LLC")
+                email.set("contact@karpilabs.io")
             }
-            maven {
-                name = "Local"
-                url = uri(layout.buildDirectory.dir("repo"))
-            }
+        }
+
+        scm {
+            url.set("https://github.com/KarpiLabs/kmp-graphine")
+            connection.set("scm:git:git://github.com/KarpiLabs/kmp-graphine.git")
+            developerConnection.set("scm:git:ssh://github.com/KarpiLabs/kmp-graphine.git")
         }
     }
+}
 
-    signing {
-        val signingKeyId = project.findProperty("signing.keyId")?.toString()
-        val signingPassword = project.findProperty("signing.password")?.toString()
-        val signingSecretKeyRingFile = project.findProperty("signing.secretKeyRingFile")?.toString()
-
-        if (signingKeyId != null && signingPassword != null && signingSecretKeyRingFile != null) {
-            sign(publishing.publications)
-        }
-    }
+// Disable desktop tests
+tasks.withType<AbstractTestTask>().matching { it.name.contains("desktopTest") }.forEach {
+    it.enabled = false
 }

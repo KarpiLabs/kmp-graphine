@@ -13,3 +13,7 @@ local.properties
 out/
 
 gradle.properties
+
+# Profiling and debugging
+*.hprof
+*.jfr
