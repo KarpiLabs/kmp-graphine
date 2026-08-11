@@ -86,6 +86,10 @@ Runnable Compose Desktop apps demonstrate the library.
 make sample-graph-view
 ```
 
+<img src="docs/graph-view-example.png" alt="Graph View Settings Panel" width="40%" />
+
+*Interactive graph visualization with live force simulation and customizable display settings.*
+
 ```bash
 ./gradlew :sample-showcase:run
 ```
