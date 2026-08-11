@@ -2,12 +2,12 @@
 
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.0%2B-blue.svg)](https://kotlinlang.org)
-[![Maven Central](https://img.shields.io/maven-central/v/io.karpilabs/graphine.svg)](https://repo1.maven.org/maven2/io/karpilabs/graphine)
+[![Maven Central](https://img.shields.io/maven-central/v/io.karpilabs/kmp-graphine.svg)](https://repo1.maven.org/maven2/io/karpilabs/kmp-graphine)
 [![Build](https://img.shields.io/badge/build-gradle-green.svg)](https://gradle.org)
 
 A modern graph and hierarchy visualization library for **Kotlin Multiplatform** and **Jetpack Compose**.
 
-Inspired by tools like **Obsidian Canvas** and **Visual Capitalist**, KmpGraphine offers an interactive way to explore relational data with a polished canvas feel.
+KmpGraphine offers an interactive way to explore relational data with a polished canvas feel.
 
 ![KmpGraphine Overview](https://raw.githubusercontent.com/karpilabs/graphine/main/docs/overview.png)
 *Modern dot grid background with glassmorphism nodes and path highlighting.*
@@ -15,7 +15,7 @@ Inspired by tools like **Obsidian Canvas** and **Visual Capitalist**, KmpGraphin
 ## Core Features
 
 - Infinite canvas: smooth panning and pinch to zoom from 0.1x to 5.0x.
-- Obsidian inspired style: subtle dot grid background, gradient edges, and dashed group zones.
+- Subtle dot grid background, gradient edges, and dashed group zones.
 - Built in intelligence:
   - Semantic zoom: labels and metadata appear or fade based on scale.
   - Path highlighting: trace ownership chains with focused dimming.
@@ -68,7 +68,7 @@ Box(Modifier.fillMaxSize()) {
 ```
 
 ## Sample apps
-Two runnable Compose Desktop apps demonstrate the library.
+Runnable Compose Desktop apps demonstrate the library.
 
 **`sample`** — a minimal org chart mirroring the [Usage](#usage) snippets above: just `GraphSurface` with a handful of nodes and edges.
 
@@ -77,6 +77,14 @@ Two runnable Compose Desktop apps demonstrate the library.
 ```
 
 **`sample-showcase`** — a "maxed out" demo exercising most of the library's surface: switchable `TreeLayout` (straight and radial) and `ForceDirectedLayout`, `GraphGroup` department zones, arrowhead edges, path highlighting, semantic zoom, and the built-in `Minimap`, `GraphControls`, `ZoomControls`, and `GraphSearch` overlays.
+
+**Graph View** (`sample-graph-view`) — large graph demo: 1000+ canvas dots, live force-directed physics, groups/display/forces settings panel.
+
+```bash
+./gradlew :sample-graph-view:run
+# or
+make sample-graph-view
+```
 
 ```bash
 ./gradlew :sample-showcase:run

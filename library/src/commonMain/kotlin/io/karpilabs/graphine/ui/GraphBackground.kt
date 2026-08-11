@@ -27,7 +27,7 @@ import io.karpilabs.graphine.GraphState
 
 /**
  * Renders a modern dot-grid background that pans and zooms with the graph.
- * Inspired by Obsidian Canvas.
+ * Subtle dotted grid for the infinite canvas.
  */
 @Composable
 fun GraphBackground(

@@ -2,11 +2,11 @@
 
 GRADLEW := ./gradlew
 
-.PHONY: help build clean test check lint format sample
+.PHONY: help build clean test check lint format sample sample-basic sample-showcase sample-graph-view
 
 help: ## Show available targets
 	@printf "Available targets:\n"
-	@grep -E '^[a-zA-Z_-]+:.*##' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*##"}; {printf "  %-12s %s\n", $$1, $$2}'
+	@grep -E '^[a-zA-Z_-]+:.*##' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*##"}; {printf "  %-18s %s\n", $$1, $$2}'
 
 build: ## Build the project
 	@$(GRADLEW) build
@@ -23,8 +23,16 @@ format: ## Format source code (Spotless)
 test: ## Run tests
 	@$(GRADLEW) test
 
-sample: ## Run the sample JVM application
+sample: sample-basic ## Run the default sample (alias for sample-basic)
+
+sample-basic: ## Run the basic org chart sample
 	@$(GRADLEW) :sample:run
+
+sample-showcase: ## Run the showcase sample with multiple graph types
+	@$(GRADLEW) :sample-showcase:run
+
+sample-graph-view: ## Run the Graph View sample (DOT · 1000+ nodes)
+	@$(GRADLEW) :sample-graph-view:run
 
 clean: ## Clean build outputs
 	@$(GRADLEW) clean
