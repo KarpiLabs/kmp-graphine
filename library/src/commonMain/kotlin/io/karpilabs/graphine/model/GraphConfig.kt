@@ -16,7 +16,6 @@
 
 package io.karpilabs.graphine.model
 
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 
 /**
@@ -28,7 +27,7 @@ data class GroupConfig(
     val backgroundAlpha: Float = 0.03f,
     val borderAlpha: Float = 0.2f,
     val borderWidth: Float = 1.5f,
-    val pathEffect: PathEffect = PathEffect.dashPathEffect(floatArrayOf(15f, 15f), 0f)
+    val pathEffect: PathEffect = PathEffect.dashPathEffect(floatArrayOf(15f, 15f), 0f),
 )
 
 /**
@@ -40,5 +39,5 @@ data class GraphConfig(
     val maxScale: Float = 5f,
     val viewportPadding: Float = 100f,
     val fitToScreenPadding: Float = 150f,
-    val groupConfig: GroupConfig = GroupConfig()
+    val groupConfig: GroupConfig = GroupConfig(),
 )

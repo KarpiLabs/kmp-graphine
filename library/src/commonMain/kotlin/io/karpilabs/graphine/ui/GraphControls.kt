@@ -27,13 +27,13 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import io.karpilabs.graphine.GraphState
 import kotlinx.coroutines.launch
-import androidx.compose.runtime.rememberCoroutineScope
 
 /**
  * A reusable floating toolbar for graph viewport controls.
@@ -44,15 +44,15 @@ fun GraphControls(
     viewportWidth: Float,
     viewportHeight: Float,
     modifier: Modifier = Modifier,
-    containerColor: Color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f)
+    containerColor: Color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f),
 ) {
     val scope = rememberCoroutineScope()
-    
+
     Row(
         modifier = modifier
             .background(containerColor, RoundedCornerShape(24.dp))
             .padding(horizontal = 8.dp, vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         IconButton(onClick = {
             scope.launch {
@@ -61,7 +61,7 @@ fun GraphControls(
         }) {
             Icon(Icons.Filled.Fullscreen, contentDescription = "Fit to screen")
         }
-        
+
         IconButton(onClick = {
             state.targetId?.let { id ->
                 scope.launch {

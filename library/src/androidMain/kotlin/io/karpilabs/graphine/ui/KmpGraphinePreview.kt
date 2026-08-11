@@ -49,26 +49,28 @@ fun FullGraphPreview() {
         GraphNode("2", "Sister A"),
         GraphNode("3", "Sister B"),
         GraphNode("4", "Brand 1"),
-        GraphNode("5", "Brand 2")
+        GraphNode("5", "Brand 2"),
     )
     val edges = listOf(
         GraphEdge("1", "2"),
         GraphEdge("1", "3"),
         GraphEdge("2", "4"),
-        GraphEdge("3", "5")
+        GraphEdge("3", "5"),
     )
-    
+
     val state = rememberGraphState(nodes, edges)
     state.targetId = "1"
-    
+
     // Set some initial positions
-    state.setNodePositions(mapOf(
-        "1" to Offset(500f, 100f),
-        "2" to Offset(300f, 300f),
-        "3" to Offset(700f, 300f),
-        "4" to Offset(200f, 500f),
-        "5" to Offset(800f, 500f)
-    ))
+    state.setNodePositions(
+        mapOf(
+            "1" to Offset(500f, 100f),
+            "2" to Offset(300f, 300f),
+            "3" to Offset(700f, 300f),
+            "4" to Offset(200f, 500f),
+            "5" to Offset(800f, 500f),
+        ),
+    )
 
     val density = LocalDensity.current
 
@@ -86,11 +88,11 @@ fun FullGraphPreview() {
                             .size(64.dp)
                             .background(Color.White, CircleShape)
                             .border(1.dp, Color.Gray, CircleShape),
-                        contentAlignment = Alignment.Center
+                        contentAlignment = Alignment.Center,
                     ) {
                         Text(text = node.data, style = MaterialTheme.typography.labelSmall)
                     }
-                }
+                },
             )
 
             GraphControls(
@@ -99,7 +101,7 @@ fun FullGraphPreview() {
                 viewportHeight = heightPx,
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .padding(16.dp)
+                    .padding(16.dp),
             )
         }
     }
@@ -116,7 +118,7 @@ fun GroupedGraphPreview() {
         GraphNode("b2", "Smarties"),
         GraphNode("b3", "Aero"),
         GraphNode("b4", "Perrier"),
-        GraphNode("b5", "Vittel")
+        GraphNode("b5", "Vittel"),
     )
     val edges = listOf(
         GraphEdge("root", "c1"),
@@ -125,16 +127,16 @@ fun GroupedGraphPreview() {
         GraphEdge("c1", "b2"),
         GraphEdge("c1", "b3"),
         GraphEdge("c2", "b4"),
-        GraphEdge("c2", "b5")
+        GraphEdge("c2", "b5"),
     )
-    
+
     val groups = listOf(
         GraphGroup("g1", "Sweets", listOf("b1", "b2", "b3")),
-        GraphGroup("g2", "Drinks", listOf("b4", "b5"))
+        GraphGroup("g2", "Drinks", listOf("b4", "b5")),
     )
-    
+
     val state = rememberGraphState(nodes, edges, groups)
-    
+
     // Use the updated TreeLayout with clustering
     val layout = TreeLayout(horizontalSpacing = 200f, verticalSpacing = 300f)
     val positions = layout.calculatePositions(nodes, edges, 1000f, 1000f)
@@ -150,11 +152,11 @@ fun GroupedGraphPreview() {
                         .size(64.dp)
                         .background(Color.White, CircleShape)
                         .border(1.dp, Color.Black, CircleShape),
-                    contentAlignment = Alignment.Center
+                    contentAlignment = Alignment.Center,
                 ) {
                     Text(text = node.data, style = MaterialTheme.typography.labelSmall)
                 }
-            }
+            },
         )
     }
 }

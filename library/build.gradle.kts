@@ -1,5 +1,4 @@
 import org.gradle.api.publish.maven.MavenPublication
-import org.gradle.api.tasks.bundling.Jar
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -21,9 +20,9 @@ kotlin {
         compileSdk = 37
         minSdk = 29
     }
-    
+
     jvm("desktop")
-    
+
     iosArm64()
     iosSimulatorArm64()
 
@@ -60,7 +59,12 @@ detekt {
 spotless {
     kotlin {
         target("src/**/*.kt")
-        ktlint()
+        ktlint().editorConfigOverride(
+            mapOf(
+                "ktlint_standard_function-naming" to "disabled",
+                "ktlint_standard_no-wildcard-imports" to "disabled",
+            ),
+        )
     }
     kotlinGradle {
         target("*.gradle.kts")
@@ -85,14 +89,14 @@ afterEvaluate {
                 name.set("Graphine")
                 description.set("A high-performance, modern graph visualization library for Compose Multiplatform.")
                 url.set("https://github.com/KarpiLabs/kmp-graphine")
-                
+
                 licenses {
                     license {
                         name.set("The Apache License, Version 2.0")
                         url.set("http://www.apache.org/licenses/LICENSE-2.0.txt")
                     }
                 }
-                
+
                 developers {
                     developer {
                         id.set("KarpiLabs")
@@ -100,7 +104,7 @@ afterEvaluate {
                         email.set("contact@karpilabs.io")
                     }
                 }
-                
+
                 scm {
                     connection.set("scm:git:git://github.com/KarpiLabs/kmp-graphine.git")
                     developerConnection.set("scm:git:ssh://github.com/KarpiLabs/kmp-graphine.git")
@@ -108,7 +112,7 @@ afterEvaluate {
                 }
             }
         }
-        
+
         repositories {
             maven {
                 name = "OSSRH"
@@ -129,7 +133,7 @@ afterEvaluate {
         val signingKeyId = project.findProperty("signing.keyId")?.toString()
         val signingPassword = project.findProperty("signing.password")?.toString()
         val signingSecretKeyRingFile = project.findProperty("signing.secretKeyRingFile")?.toString()
-        
+
         if (signingKeyId != null && signingPassword != null && signingSecretKeyRingFile != null) {
             sign(publishing.publications)
         }

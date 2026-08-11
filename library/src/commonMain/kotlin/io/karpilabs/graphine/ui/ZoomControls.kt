@@ -27,11 +27,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import androidx.compose.runtime.rememberCoroutineScope
 import io.karpilabs.graphine.GraphState
 import kotlinx.coroutines.launch
 
@@ -42,15 +42,15 @@ import kotlinx.coroutines.launch
 fun ZoomControls(
     state: GraphState<*>,
     modifier: Modifier = Modifier,
-    containerColor: Color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f)
+    containerColor: Color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f),
 ) {
     val scope = rememberCoroutineScope()
-    
+
     Column(
         modifier = modifier
             .background(containerColor, RoundedCornerShape(24.dp))
             .padding(vertical = 4.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         IconButton(onClick = {
             scope.launch {
@@ -59,7 +59,7 @@ fun ZoomControls(
         }) {
             Icon(Icons.Filled.Add, contentDescription = "Zoom In")
         }
-        
+
         IconButton(onClick = {
             scope.launch {
                 state.animateTo((state.scale / 1.2f).coerceAtLeast(0.1f), state.offset)

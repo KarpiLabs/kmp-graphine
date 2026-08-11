@@ -23,14 +23,13 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class GraphStateTest {
-
     @Test
     fun testNodeDragging() {
         val node = GraphNode("1", "Data")
         val state = GraphState(initialNodes = listOf(node))
-        
+
         state.onNodeDragged("1", Offset(10f, 20f))
-        
+
         assertEquals(Offset(10f, 20f), state.nodeStates["1"]?.position)
     }
 
@@ -38,10 +37,10 @@ class GraphStateTest {
     fun testNodeCentering() {
         val node = GraphNode("1", "Data")
         val state = GraphState(initialNodes = listOf(node))
-        
+
         state.onNodeResized("1", IntSize(100, 50))
         state.onNodeDragged("1", Offset(100f, 100f))
-        
+
         // Position (100, 100) + Half Size (50, 25) = (150, 125)
         assertEquals(Offset(150f, 125f), state.getNodeCenter("1"))
     }
@@ -51,10 +50,10 @@ class GraphStateTest {
         val node = GraphNode("1", "Data")
         val state = GraphState(initialNodes = listOf(node))
         state.snapGridSize = 50f
-        
+
         // Drag to 62, 22. Should snap to 50, 0 (closest 50-pixel marks)
         state.onNodeDragged("1", Offset(62f, 22f))
-        
+
         assertEquals(Offset(50f, 0f), state.nodeStates["1"]?.position)
     }
 }

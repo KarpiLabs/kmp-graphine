@@ -30,5 +30,5 @@ data class GraphGroup(
     val id: String,
     val label: String? = null,
     val nodeIds: List<String>,
-    val color: Color = Color.LightGray.copy(alpha = 0.1f)
+    val color: Color = Color.LightGray.copy(alpha = 0.1f),
 )

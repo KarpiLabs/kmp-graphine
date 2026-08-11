@@ -28,7 +28,7 @@ import androidx.compose.ui.unit.IntSize
  */
 data class GraphNode<T>(
     val id: String,
-    val data: T
+    val data: T,
 )
 
 /**
@@ -37,5 +37,5 @@ data class GraphNode<T>(
 data class GraphNodeState<T>(
     val node: GraphNode<T>,
     val position: Offset = Offset.Zero,
-    val size: IntSize = IntSize.Zero
+    val size: IntSize = IntSize.Zero,
 )

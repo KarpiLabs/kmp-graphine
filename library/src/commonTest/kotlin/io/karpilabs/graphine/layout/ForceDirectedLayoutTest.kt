@@ -23,29 +23,30 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals
 
 class ForceDirectedLayoutTest {
-
     @Test
     fun testForceDirectedLayoutPositions() {
-        val nodes = listOf(
-            GraphNode("1", "A"),
-            GraphNode("2", "B"),
-            GraphNode("3", "C")
-        )
-        val edges = listOf(
-            GraphEdge("1", "2"),
-            GraphEdge("2", "3")
-        )
-        
+        val nodes =
+            listOf(
+                GraphNode("1", "A"),
+                GraphNode("2", "B"),
+                GraphNode("3", "C"),
+            )
+        val edges =
+            listOf(
+                GraphEdge("1", "2"),
+                GraphEdge("2", "3"),
+            )
+
         val layout = ForceDirectedLayout(iterations = 10)
         val positions = layout.calculatePositions(nodes, edges, 1000f, 1000f)
-        
+
         assertEquals(3, positions.size)
-        
+
         // Ensure nodes aren't all at the same spot (repulsion worked)
         val pos1 = positions["1"]!!
         val pos2 = positions["2"]!!
         val pos3 = positions["3"]!!
-        
+
         assertNotEquals(pos1, pos2)
         assertNotEquals(pos2, pos3)
         assertNotEquals(pos1, pos3)

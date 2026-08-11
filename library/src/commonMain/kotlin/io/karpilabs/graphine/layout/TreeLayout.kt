@@ -23,20 +23,20 @@ import kotlin.math.*
 
 enum class TreeLayoutMode {
     STRAIGHT,
-    RADIAL
+    RADIAL,
 }
 
 class TreeLayout(
     private val horizontalSpacing: Float = 450f,
     private val verticalSpacing: Float = 550f,
-    private val mode: TreeLayoutMode = TreeLayoutMode.STRAIGHT
+    private val mode: TreeLayoutMode = TreeLayoutMode.STRAIGHT,
 ) : GraphLayout {
 
     override fun <T> calculatePositions(
         nodes: List<GraphNode<T>>,
         edges: List<GraphEdge>,
         viewportWidth: Float,
-        viewportHeight: Float
+        viewportHeight: Float,
     ): Map<String, Offset> {
         val positions = mutableMapOf<String, Offset>()
         val adjacency = edges.groupBy({ it.from }, { it.to })
@@ -51,16 +51,16 @@ class TreeLayout(
     }
 
     private fun layoutNode(
-        id: String, 
-        x: Float, 
-        y: Float, 
-        adj: Map<String, List<String>>, 
+        id: String,
+        x: Float,
+        y: Float,
+        adj: Map<String, List<String>>,
         pos: MutableMap<String, Offset>,
-        depth: Int
+        depth: Int,
     ) {
         if (pos.containsKey(id)) return
         pos[id] = Offset(x, y)
-        
+
         val children = adj[id] ?: return
         if (children.isEmpty()) return
 
@@ -78,11 +78,14 @@ class TreeLayout(
         children: List<String>,
         adj: Map<String, List<String>>,
         pos: MutableMap<String, Offset>,
-        depth: Int
+        depth: Int,
     ) {
         // Dynamic maxPerRow: For small clusters, keep them wide. For large clusters, make them square-ish.
-        val maxPerRow = if (children.size <= 3) children.size 
-                       else ceil(sqrt(children.size.toDouble())).toInt().coerceAtLeast(3)
+        val maxPerRow = if (children.size <= 3) {
+            children.size
+        } else {
+            ceil(sqrt(children.size.toDouble())).toInt().coerceAtLeast(3)
+        }
 
         val currentHSpacing = horizontalSpacing * (1f / (depth * 0.1f + 1f)).coerceAtLeast(0.7f)
         val currentVSpacing = verticalSpacing
@@ -116,28 +119,28 @@ class TreeLayout(
         children: List<String>,
         adj: Map<String, List<String>>,
         pos: MutableMap<String, Offset>,
-        depth: Int
+        depth: Int,
     ) {
         // Radial strategy: Spread nodes along an arc below the parent
         // As rows increase, radius increases and more nodes fit.
         val baseRadius = verticalSpacing
         val nodesPerArc = 5 + (depth * 2) // Outer arcs can hold more nodes
-        
+
         children.chunked(nodesPerArc).forEachIndexed { arcIndex, arcChildren ->
             val radius = baseRadius + (arcIndex * verticalSpacing * 0.6f)
             val angleRange = PI * 0.8 // 144 degree arc centered downwards
             val startAngle = (PI - angleRange) / 2 + PI // Start angle to point down
-            
+
             val angleStep = if (arcChildren.size > 1) angleRange / (arcChildren.size - 1) else 0.0
-            
+
             arcChildren.forEachIndexed { index, childId ->
                 val angle = startAngle + (index * angleStep)
                 val childX = x + (radius * cos(angle)).toFloat()
                 val childY = y - (radius * sin(angle)).toFloat() // Y grows down, but sin is up, so subtract
-                
+
                 // Adjusting childY to ensure it's always below parent
                 val finalChildY = max(y + 100f, childY)
-                
+
                 layoutNode(childId, childX, finalChildY, adj, pos, depth + 1)
             }
         }

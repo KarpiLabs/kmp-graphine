@@ -44,7 +44,7 @@ fun Minimap(
     viewportHeight: Float,
     modifier: Modifier = Modifier,
     backgroundColor: Color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-    borderColor: Color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+    borderColor: Color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
 ) {
     if (state.nodeStates.isEmpty()) return
 
@@ -52,7 +52,7 @@ fun Minimap(
         modifier = modifier
             .size(150.dp, 100.dp)
             .background(backgroundColor, RoundedCornerShape(8.dp))
-            .border(0.5.dp, borderColor, RoundedCornerShape(8.dp))
+            .border(0.5.dp, borderColor, RoundedCornerShape(8.dp)),
     ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
             // 1. Calculate Bounding Box of all nodes
@@ -61,7 +61,7 @@ fun Minimap(
             var maxX = Float.MIN_VALUE
             var maxY = Float.MIN_VALUE
 
-            state.nodeStates.values.forEach { 
+            state.nodeStates.values.forEach {
                 minX = minOf(minX, it.position.x)
                 minY = minOf(minY, it.position.y)
                 maxX = maxOf(maxX, it.position.x)
@@ -78,7 +78,7 @@ fun Minimap(
 
             val drawOffset = Offset(
                 (size.width - graphWidth * scale) / 2,
-                (size.height - graphHeight * scale) / 2
+                (size.height - graphHeight * scale) / 2,
             )
 
             // 2. Draw Nodes as tiny dots
@@ -88,7 +88,7 @@ fun Minimap(
                 drawCircle(
                     color = Color.Gray.copy(alpha = 0.5f),
                     radius = 2f,
-                    center = Offset(x, y)
+                    center = Offset(x, y),
                 )
             }
 
@@ -103,7 +103,7 @@ fun Minimap(
                 topLeft = Offset(viewLeft, viewTop),
                 size = Size(viewWidth, viewHeight),
                 cornerRadius = CornerRadius(2f),
-                style = Stroke(width = 1f)
+                style = Stroke(width = 1f),
             )
         }
     }

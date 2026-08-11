@@ -34,12 +34,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.input.pointer.util.VelocityTracker
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.unit.toSize
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
@@ -51,6 +45,12 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.util.VelocityTracker
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.toSize
 import io.karpilabs.graphine.GraphState
 import io.karpilabs.graphine.model.EdgeConfig
 import io.karpilabs.graphine.model.GraphGroup
@@ -73,7 +73,7 @@ fun <T> GraphSurface(
     modifier: Modifier = Modifier,
     edgeConfig: EdgeConfig = EdgeConfig(
         color = Color.Gray.copy(alpha = 0.3f),
-        width = 2f
+        width = 2f,
     ),
     showGrid: Boolean = true,
     gridColor: Color? = null,
@@ -83,12 +83,12 @@ fun <T> GraphSurface(
     enablePathHighlighting: Boolean = true,
     onNodeClick: ((GraphNode<T>) -> Unit)? = null,
     onNodeLongClick: ((GraphNode<T>) -> Unit)? = null,
-    nodeContent: @Composable (node: GraphNode<T>, isDetailVisible: Boolean) -> Unit
+    nodeContent: @Composable (node: GraphNode<T>, isDetailVisible: Boolean) -> Unit,
 ) {
     val scope = rememberCoroutineScope()
     var surfaceSize by remember { mutableStateOf(Size.Zero) }
     val resolvedGridColor = gridColor ?: MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
-    
+
     // Sync state values with animatables
     state.offset = state.offsetAnim.value
     state.scale = state.scaleAnim.value
@@ -99,17 +99,17 @@ fun <T> GraphSurface(
         } else {
             centroid
         }
-        
+
         val oldScale = state.scale
         val newScale = (state.scale * zoomChange).coerceIn(0.1f, 5f)
 
         // Calculate translation needed to keep the pivot point stationary in content space
         val contentPivotX = (pivot.x - state.offset.x) / oldScale
         val contentPivotY = (pivot.y - state.offset.y) / oldScale
-        
+
         var newOffset = Offset(
             pivot.x - (contentPivotX * newScale),
-            pivot.y - (contentPivotY * newScale)
+            pivot.y - (contentPivotY * newScale),
         )
 
         // Add incremental panning
@@ -117,11 +117,11 @@ fun <T> GraphSurface(
 
         // Apply boundaries
         newOffset = state.coerceOffset(newOffset, surfaceSize.width, surfaceSize.height, newScale)
-        
+
         // Update state synchronously to prevent jumps
         state.scale = newScale
         state.offset = newOffset
-        
+
         scope.launch {
             state.scaleAnim.snapTo(newScale)
             state.offsetAnim.snapTo(newOffset)
@@ -136,8 +136,11 @@ fun <T> GraphSurface(
             .background(Color.Transparent)
             .onGloballyPositioned { surfaceSize = it.size.toSize() }
             .then(
-                if (enableZoom) Modifier.transformable(state = transformState)
-                else Modifier
+                if (enableZoom) {
+                    Modifier.transformable(state = transformState)
+                } else {
+                    Modifier
+                },
             )
             .pointerInput(Unit) {
                 detectTapGestures(onTap = { state.clearInteractions() })
@@ -150,14 +153,14 @@ fun <T> GraphSurface(
                     onDrag = { change, dragAmount ->
                         change.consume()
                         velocityTracker.addPosition(change.uptimeMillis, change.position)
-                        
+
                         val newOffset = state.coerceOffset(
                             state.offset + dragAmount,
                             surfaceSize.width,
                             surfaceSize.height,
-                            state.scale
+                            state.scale,
                         )
-                        
+
                         state.offset = newOffset
                         scope.launch {
                             state.offsetAnim.snapTo(newOffset)
@@ -168,12 +171,12 @@ fun <T> GraphSurface(
                         scope.launch {
                             state.offsetAnim.animateDecay(
                                 Offset(velocity.x, velocity.y),
-                                exponentialDecay()
+                                exponentialDecay(),
                             )
                         }
-                    }
+                    },
                 )
-            }
+            },
     ) {
         if (showGrid) {
             GraphBackground(state = state, dotColor = resolvedGridColor)
@@ -186,8 +189,8 @@ fun <T> GraphSurface(
                     scaleX = state.scale,
                     scaleY = state.scale,
                     translationX = state.offset.x,
-                    translationY = state.offset.y
-                )
+                    translationY = state.offset.y,
+                ),
         ) {
             // 1. Draw Group Zones
             Canvas(modifier = Modifier.fillMaxSize()) {
@@ -198,12 +201,13 @@ fun <T> GraphSurface(
             Canvas(modifier = Modifier.fillMaxSize()) {
                 state.edges.forEach { edge ->
                     if (!state.isNodeVisible(edge.from) || !state.isNodeVisible(edge.to)) return@forEach
-                    val fromPos = state.getNodeCenter(edge.from); val toPos = state.getNodeCenter(edge.to)
+                    val fromPos = state.getNodeCenter(edge.from)
+                    val toPos = state.getNodeCenter(edge.to)
                     if (fromPos == Offset.Zero || toPos == Offset.Zero) return@forEach
 
-                    val isHighlighted = state.highlightedEdgeIds.isEmpty() || 
-                                       state.highlightedEdgeIds.contains(edge.from to edge.to)
-                    
+                    val isHighlighted = state.highlightedEdgeIds.isEmpty() ||
+                        state.highlightedEdgeIds.contains(edge.from to edge.to)
+
                     val pathAlpha = if (isHighlighted) 1.0f else 0.1f
                     val path = Path().apply {
                         moveTo(fromPos.x, fromPos.y)
@@ -213,7 +217,8 @@ fun <T> GraphSurface(
                     val baseColor = edgeConfig.color.copy(alpha = edgeConfig.color.alpha * pathAlpha)
                     val brush = Brush.linearGradient(
                         colors = listOf(baseColor, baseColor.copy(alpha = 0.1f * pathAlpha)),
-                        start = fromPos, end = toPos
+                        start = fromPos,
+                        end = toPos,
                     )
 
                     drawPath(path = path, brush = brush, style = Stroke(width = edgeConfig.width, cap = StrokeCap.Round, pathEffect = edgeConfig.pathEffect))
@@ -234,14 +239,14 @@ fun <T> GraphSurface(
                         .onGloballyPositioned { state.onNodeResized(id, it.size) }
                         .pointerInput(id) {
                             detectTapGestures(
-                                onTap = { 
+                                onTap = {
                                     if (enablePathHighlighting) state.highlightPath(id)
-                                    onNodeClick?.invoke(nodeState.node) 
+                                    onNodeClick?.invoke(nodeState.node)
                                 },
-                                onLongPress = { 
+                                onLongPress = {
                                     state.toggleCollapse(id)
-                                    onNodeLongClick?.invoke(nodeState.node) 
-                                }
+                                    onNodeLongClick?.invoke(nodeState.node)
+                                },
                             )
                         }
                         .pointerInput(id) {
@@ -249,7 +254,7 @@ fun <T> GraphSurface(
                                 change.consume()
                                 state.onNodeDragged(id, dragAmount / state.scale)
                             }
-                        }
+                        },
                 ) {
                     nodeContent(nodeState.node, isDetailVisible)
                 }
@@ -274,18 +279,27 @@ private fun DrawScope.drawGroupZone(group: GraphGroup, state: GraphState<*>) {
     val nodePositions = group.nodeIds.filter { state.isNodeVisible(it) }.mapNotNull { state.nodeStates[it]?.position }
     if (nodePositions.isEmpty()) return
 
-    var minX = Float.MAX_VALUE; var minY = Float.MAX_VALUE
-    var maxX = Float.MIN_VALUE; var maxY = Float.MIN_VALUE
+    var minX = Float.MAX_VALUE
+    var minY = Float.MAX_VALUE
+    var maxX = Float.MIN_VALUE
+    var maxY = Float.MIN_VALUE
 
     nodePositions.forEach { pos ->
-        minX = minOf(minX, pos.x); minY = minOf(minY, pos.y)
-        maxX = maxOf(maxX, pos.x); maxY = maxOf(maxY, pos.y)
+        minX = minOf(minX, pos.x)
+        minY = minOf(minY, pos.y)
+        maxX = maxOf(maxX, pos.x)
+        maxY = maxOf(maxY, pos.y)
     }
 
     val padding = 120f
     val rect = Rect(minX - padding, minY - padding, maxX + padding, maxY + padding)
 
     drawRoundRect(color = group.color.copy(alpha = 0.03f), topLeft = rect.topLeft, size = rect.size, cornerRadius = CornerRadius(32f))
-    drawRoundRect(color = Color.Gray.copy(alpha = 0.2f), topLeft = rect.topLeft, size = rect.size, cornerRadius = CornerRadius(32f),
-        style = Stroke(width = 1.5f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(15f, 15f), 0f)))
+    drawRoundRect(
+        color = Color.Gray.copy(alpha = 0.2f),
+        topLeft = rect.topLeft,
+        size = rect.size,
+        cornerRadius = CornerRadius(32f),
+        style = Stroke(width = 1.5f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(15f, 15f), 0f)),
+    )
 }

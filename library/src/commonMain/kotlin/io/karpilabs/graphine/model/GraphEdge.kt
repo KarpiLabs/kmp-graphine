@@ -24,5 +24,5 @@ package io.karpilabs.graphine.model
  */
 data class GraphEdge(
     val from: String,
-    val to: String
+    val to: String,
 )

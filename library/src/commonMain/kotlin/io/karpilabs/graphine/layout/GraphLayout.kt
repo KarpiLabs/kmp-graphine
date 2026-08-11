@@ -25,6 +25,6 @@ interface GraphLayout {
         nodes: List<GraphNode<T>>,
         edges: List<GraphEdge>,
         viewportWidth: Float,
-        viewportHeight: Float
+        viewportHeight: Float,
     ): Map<String, Offset>
 }

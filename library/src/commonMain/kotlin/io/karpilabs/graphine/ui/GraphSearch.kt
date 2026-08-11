@@ -51,16 +51,16 @@ fun GraphSearch(
     viewportWidth: Float,
     viewportHeight: Float,
     modifier: Modifier = Modifier,
-    nodeLabelProvider: (String) -> String = { it }
+    nodeLabelProvider: (String) -> String = { it },
 ) {
     var query by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
-    
+
     Box(
         modifier = modifier
             .fillMaxWidth()
             .padding(16.dp)
-            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.9f), RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.9f), RoundedCornerShape(12.dp)),
     ) {
         TextField(
             value = query,
@@ -68,10 +68,10 @@ fun GraphSearch(
                 query = newValue
                 // Auto-fly to first match
                 if (newValue.length >= 2) {
-                    val match = state.nodeStates.keys.find { 
-                        nodeLabelProvider(it).contains(newValue, ignoreCase = true) 
+                    val match = state.nodeStates.keys.find {
+                        nodeLabelProvider(it).contains(newValue, ignoreCase = true)
                     }
-                    match?.let { 
+                    match?.let {
                         scope.launch { state.flyToNodeAnimated(it, viewportWidth, viewportHeight) }
                     }
                 }
@@ -81,7 +81,10 @@ fun GraphSearch(
             leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
             trailingIcon = {
                 if (query.isNotEmpty()) {
-                    IconButton(onClick = { query = ""; state.clearInteractions() }) {
+                    IconButton(onClick = {
+                        query = ""
+                        state.clearInteractions()
+                    }) {
                         Icon(Icons.Filled.Close, contentDescription = "Clear")
                     }
                 }
@@ -91,8 +94,8 @@ fun GraphSearch(
                 unfocusedContainerColor = Color.Transparent,
                 disabledContainerColor = Color.Transparent,
                 focusedIndicatorColor = Color.Transparent,
-                unfocusedIndicatorColor = Color.Transparent
-            )
+                unfocusedIndicatorColor = Color.Transparent,
+            ),
         )
     }
 }

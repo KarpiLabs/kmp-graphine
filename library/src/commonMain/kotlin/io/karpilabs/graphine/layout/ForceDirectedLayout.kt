@@ -19,8 +19,6 @@ package io.karpilabs.graphine.layout
 import androidx.compose.ui.geometry.Offset
 import io.karpilabs.graphine.model.GraphEdge
 import io.karpilabs.graphine.model.GraphNode
-import kotlin.math.sqrt
-
 import kotlin.random.Random
 
 /**
@@ -32,30 +30,33 @@ class ForceDirectedLayout(
     private val iterations: Int = 100,
     private val k: Float = 400f, // Increased ideal distance
     private val repulsionStrength: Float = 15000f, // Increased repulsion
-    private val springStrength: Float = 0.05f
+    private val springStrength: Float = 0.05f,
 ) : GraphLayout {
-
     override fun <T> calculatePositions(
         nodes: List<GraphNode<T>>,
         edges: List<GraphEdge>,
         viewportWidth: Float,
-        viewportHeight: Float
+        viewportHeight: Float,
     ): Map<String, Offset> {
         if (nodes.isEmpty()) return emptyMap()
 
         // Start with random positions or a simple circle
         val random = Random(42) // Fixed seed for stability
-        val positions = nodes.associate { node ->
-            node.id to Offset(
-                (viewportWidth / 2) + (random.nextFloat() - 0.5f) * 100,
-                (viewportHeight / 2) + (random.nextFloat() - 0.5f) * 100
-            )
-        }.toMutableMap()
+        val positions =
+            nodes
+                .associate { node ->
+                    node.id to
+                        Offset(
+                            (viewportWidth / 2) + (random.nextFloat() - 0.5f) * 100,
+                            (viewportHeight / 2) + (random.nextFloat() - 0.5f) * 100,
+                        )
+                }.toMutableMap()
 
         repeat(iterations) {
-            val displacements = mutableMapOf<String, Offset>().apply {
-                nodes.forEach { put(it.id, Offset.Zero) }
-            }
+            val displacements =
+                mutableMapOf<String, Offset>().apply {
+                    nodes.forEach { put(it.id, Offset.Zero) }
+                }
 
             // 1. Repulsion between all pairs
             for (i in nodes.indices) {

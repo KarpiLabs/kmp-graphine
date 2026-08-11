@@ -22,10 +22,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.DrawScope
-import io.karpilabs.graphine.GraphState
-
 import androidx.compose.ui.graphics.PointMode
+import io.karpilabs.graphine.GraphState
 
 /**
  * Renders a modern dot-grid background that pans and zooms with the graph.
@@ -35,17 +33,17 @@ import androidx.compose.ui.graphics.PointMode
 fun GraphBackground(
     state: GraphState<*>,
     dotColor: Color = Color.Gray.copy(alpha = 0.15f),
-    gridSize: Float = 60f
+    gridSize: Float = 60f,
 ) {
     Canvas(modifier = Modifier.fillMaxSize()) {
         val scaledGridSize = gridSize * state.scale
-        
+
         // We only want to draw dots that are visible on screen
         val startX = state.offset.x % scaledGridSize
         val startY = state.offset.y % scaledGridSize
 
         val points = mutableListOf<Offset>()
-        
+
         var x = startX
         while (x < size.width + scaledGridSize) {
             var y = startY
@@ -60,7 +58,7 @@ fun GraphBackground(
             points = points,
             pointMode = PointMode.Points,
             color = dotColor,
-            strokeWidth = 2f * state.scale.coerceIn(0.5f, 2.0f)
+            strokeWidth = 2f * state.scale.coerceIn(0.5f, 2.0f),
         )
     }
 }

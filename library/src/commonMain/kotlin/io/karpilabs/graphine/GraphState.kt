@@ -44,7 +44,7 @@ class GraphState<T>(
     initialNodes: List<GraphNode<T>> = emptyList(),
     initialEdges: List<GraphEdge> = emptyList(),
     initialGroups: List<GraphGroup> = emptyList(),
-    val config: GraphConfig = GraphConfig()
+    val config: GraphConfig = GraphConfig(),
 ) {
     private val _nodeStates = mutableStateMapOf<String, GraphNodeState<T>>().apply {
         initialNodes.forEach { put(it.id, GraphNodeState(it)) }
@@ -57,13 +57,13 @@ class GraphState<T>(
 
     /** The list of edges connecting nodes. */
     var edges by mutableStateOf(initialEdges)
-    
+
     /** Logical clusters of nodes. */
     var groups by mutableStateOf(initialGroups)
 
     /** The current zoom level (0.1 to 5.0). */
     var scale by mutableFloatStateOf(1f)
-    
+
     /** The current pan offset of the canvas. */
     var offset by mutableStateOf(Offset.Zero)
 
@@ -85,8 +85,10 @@ class GraphState<T>(
      */
     fun getContentBounds(): Rect {
         if (_nodeStates.isEmpty()) return Rect(0f, 0f, 0f, 0f)
-        var minX = Float.MAX_VALUE; var minY = Float.MAX_VALUE
-        var maxX = Float.MIN_VALUE; var maxY = Float.MIN_VALUE
+        var minX = Float.MAX_VALUE
+        var minY = Float.MAX_VALUE
+        var maxX = Float.MIN_VALUE
+        var maxY = Float.MIN_VALUE
 
         _nodeStates.values.forEach { state ->
             minX = minOf(minX, state.position.x)
@@ -156,14 +158,14 @@ class GraphState<T>(
     fun onNodeDragged(nodeId: String, delta: Offset) {
         val current = _nodeStates[nodeId] ?: return
         var newPos = current.position + delta
-        
+
         if (snapGridSize > 0) {
             newPos = Offset(
                 (newPos.x / snapGridSize).roundToInt() * snapGridSize,
-                (newPos.y / snapGridSize).roundToInt() * snapGridSize
+                (newPos.y / snapGridSize).roundToInt() * snapGridSize,
             )
         }
-        
+
         _nodeStates[nodeId] = current.copy(position = newPos)
     }
 
@@ -184,7 +186,7 @@ class GraphState<T>(
         val state = _nodeStates[nodeId] ?: return Offset.Zero
         return state.position + Offset(
             state.size.width / 2f,
-            state.size.height / 2f
+            state.size.height / 2f,
         )
     }
 
@@ -219,7 +221,7 @@ class GraphState<T>(
         val targetScale = 1.2f
         val targetOffset = Offset(
             (viewportWidth / 2) - (nodePos.x * targetScale),
-            (viewportHeight / 2) - (nodePos.y * targetScale)
+            (viewportHeight / 2) - (nodePos.y * targetScale),
         )
         animateTo(targetScale, targetOffset, viewportWidth, viewportHeight)
     }
@@ -230,7 +232,7 @@ class GraphState<T>(
     suspend fun flyToNodeAnimated(
         nodeId: String,
         viewportWidth: Float,
-        viewportHeight: Float
+        viewportHeight: Float,
     ) = coroutineScope {
         animateTo(0.8f, offset, viewportWidth, viewportHeight) // Zoom out for context
         centerOnNodeAnimated(nodeId, viewportWidth, viewportHeight)
@@ -262,16 +264,18 @@ class GraphState<T>(
      * Adjusts the viewport to show all nodes with optional padding.
      */
     suspend fun fitToScreenAnimated(
-        viewportWidth: Float, 
-        viewportHeight: Float, 
-        padding: Float = config.fitToScreenPadding
+        viewportWidth: Float,
+        viewportHeight: Float,
+        padding: Float = config.fitToScreenPadding,
     ) {
         if (_nodeStates.isEmpty()) return
-        
-        var minX = Float.MAX_VALUE; var minY = Float.MAX_VALUE
-        var maxX = Float.MIN_VALUE; var maxY = Float.MIN_VALUE
 
-        _nodeStates.values.forEach { 
+        var minX = Float.MAX_VALUE
+        var minY = Float.MAX_VALUE
+        var maxX = Float.MIN_VALUE
+        var maxY = Float.MIN_VALUE
+
+        _nodeStates.values.forEach {
             minX = minOf(minX, it.position.x)
             minY = minOf(minY, it.position.y)
             maxX = maxOf(maxX, it.position.x)
@@ -280,16 +284,16 @@ class GraphState<T>(
 
         val contentWidth = (maxX - minX) + (padding * 2)
         val contentHeight = (maxY - minY) + (padding * 2)
-        
+
         val targetScale = minOf(viewportWidth / contentWidth, viewportHeight / contentHeight).coerceIn(0.1f, 2.0f)
         val centerX = (minX + maxX) / 2
         val centerY = (minY + maxY) / 2
-        
+
         val targetOffset = Offset(
             (viewportWidth / 2) - (centerX * targetScale),
-            (viewportHeight / 2) - (centerY * targetScale)
+            (viewportHeight / 2) - (centerY * targetScale),
         )
-        
+
         animateTo(targetScale, targetOffset, viewportWidth, viewportHeight)
     }
 
@@ -303,7 +307,8 @@ class GraphState<T>(
             return
         }
 
-        val nodes = mutableSetOf<String>(); val edges = mutableSetOf<Pair<String, String>>()
+        val nodes = mutableSetOf<String>()
+        val edges = mutableSetOf<Pair<String, String>>()
         nodes.add(nodeId)
 
         var current: String? = nodeId
@@ -313,7 +318,9 @@ class GraphState<T>(
                 nodes.add(parentEdge.from)
                 edges.add(parentEdge.from to parentEdge.to)
                 current = parentEdge.from
-            } else { current = null }
+            } else {
+                current = null
+            }
         }
 
         fun findDescendants(id: String) {
@@ -357,7 +364,5 @@ class GraphState<T>(
 fun <T> rememberGraphState(
     nodes: List<GraphNode<T>> = emptyList(),
     edges: List<GraphEdge> = emptyList(),
-    groups: List<GraphGroup> = emptyList()
-): GraphState<T> {
-    return remember(nodes, edges, groups) { GraphState(nodes, edges, groups) }
-}
+    groups: List<GraphGroup> = emptyList(),
+): GraphState<T> = remember(nodes, edges, groups) { GraphState(nodes, edges, groups) }

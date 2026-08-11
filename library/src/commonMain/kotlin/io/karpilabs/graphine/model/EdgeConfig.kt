@@ -46,5 +46,5 @@ data class EdgeConfig(
     val strokeCap: StrokeCap = StrokeCap.Round,
     val pathEffect: PathEffect? = null,
     val showArrowheads: Boolean = false,
-    val arrowheadSize: Float = 10f
+    val arrowheadSize: Float = 10f,
 )
