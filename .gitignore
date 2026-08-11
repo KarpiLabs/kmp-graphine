@@ -1,0 +1,15 @@
+.gradle/
+build/
+**/build/
+.idea/
+*.iml
+
+local.properties
+.DS_Store
+
+.kotlin/
+.run/
+.venv/
+out/
+
+gradle.properties
