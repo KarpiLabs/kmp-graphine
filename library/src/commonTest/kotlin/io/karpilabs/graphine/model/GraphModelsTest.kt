@@ -19,6 +19,7 @@ package io.karpilabs.graphine.model
 import androidx.compose.ui.graphics.Color
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class GraphModelsTest {
@@ -78,9 +79,9 @@ class GraphModelsTest {
     @Test
     fun testEdgeConfigDefaults() {
         val config = EdgeConfig()
-        assertEquals(Color.Gray.copy(alpha = 0.3f), config.color)
+        assertEquals(Color.Gray.copy(alpha = 0.5f), config.color)
         assertEquals(2f, config.width)
-        assertTrue(config.showArrowheads)
+        assertFalse(config.showArrowheads)
     }
 
     @Test
@@ -89,28 +90,38 @@ class GraphModelsTest {
             color = Color.Red,
             width = 4f,
             showArrowheads = false,
-            style = EdgeStyle.DASHED,
+            style = EdgeStyle.STRAIGHT,
         )
         assertEquals(Color.Red, config.color)
         assertEquals(4f, config.width)
         assertTrue(!config.showArrowheads)
-        assertEquals(EdgeStyle.DASHED, config.style)
+        assertEquals(EdgeStyle.STRAIGHT, config.style)
+    }
+
+    @Test
+    fun testEdgeConfigOrthogonal() {
+        val config = EdgeConfig(
+            style = EdgeStyle.ORTHOGONAL,
+        )
+        assertEquals(EdgeStyle.ORTHOGONAL, config.style)
     }
 
     @Test
     fun testDotStyleDefaults() {
         val style = DotStyle<String>()
-        assertEquals(6f, style.radius)
+        assertEquals(4f, style.baseRadius)
+        assertEquals(0.5f, style.radiusPerDegree)
+        assertEquals(12f, style.maxRadius)
     }
 
     @Test
     fun testDotStyleCustom() {
         val style = DotStyle<String>(
-            radius = 12f,
-            color = { Color.Green },
+            baseRadius = 12f,
+            color = { _, _ -> Color.Green },
         )
-        assertEquals(12f, style.radius)
-        assertEquals(Color.Green, style.color(GraphNode("1", "data")))
+        assertEquals(12f, style.baseRadius)
+        assertEquals(Color.Green, style.color(GraphNode("1", "data"), 0))
     }
 
     @Test

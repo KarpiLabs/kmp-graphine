@@ -39,14 +39,17 @@ val edges = listOf(GraphEdge(from = "1", to = "2"), GraphEdge(from = "1", to = "
 ```
 
 ### 2. State and surface
-Initialize the state and place `GraphSurface` in your UI.
+Initialize the state and place `GraphSurface` in your UI. Customize your edge connections by configuring the `EdgeStyle`: `STRAIGHT`, `CURVED` (Cubic Bézier), or `ORTHOGONAL` (stepped right-angle routing, perfect for hierarchical and organizational charts).
 
 ```kotlin
 val state = rememberGraphState(nodes, edges)
 
 GraphSurface(
     state = state,
-    edgeConfig = EdgeConfig(showArrowheads = true),
+    edgeConfig = EdgeConfig(
+        style = EdgeStyle.ORTHOGONAL, // STRAIGHT, CURVED, or ORTHOGONAL
+        showArrowheads = true
+    ),
     nodeContent = { node, isDetailVisible ->
         // Use any Composable as your node
         MyNodeCard(node.data, showText = isDetailVisible)
@@ -110,3 +113,25 @@ For instructions on publishing to Maven Central, see [PUBLISHING.md](PUBLISHING.
 - Box and lasso selection for bulk operations
 - Node connector ports for drag to link
 - SVG and PNG export
+
+---
+
+## Strategy & Suggestions to Drive Adoption
+
+To make **KmpGraphine** the go-to graph and hierarchy visualization library for the Kotlin Multiplatform ecosystem, we propose several impactful strategies categorized by feature enrichment, user experience, developer advocacy, and ecosystem integration.
+
+### 1. Enrich Interactive Capabilities
+- **Manhattan / Orthogonal Routing (Added!)**: Great for diagrams, trees, and classic org charts.
+- **Dynamic Port Connections**: Allow specific "ports" on nodes (Top, Bottom, Left, Right) to connect edges, preventing lines from crossing through node card bodies.
+- **Lasso & Box Selection**: Allow drag-to-select multiple nodes simultaneously to move, delete, or group them in bulk.
+- **Edge Routing & Obstacle Avoidance**: Integrate a routing algorithm (like A* or pathfinder) to automatically route edges around non-connected node bounds.
+
+### 2. High-Performance rendering & Optimization
+- **Lazy Canvas / Lazy Layout Nodes**: Currently, 1000+ nodes render fine, but scaling to 10k+ requires a `LazyLayout`-like virtualized composable or a canvas-only fallback when zoomed far out.
+- **WebAssembly (Wasm) Compatibility**: Kotlin Multiplatform Web (Wasm) is rapidly growing. Ensuring KmpGraphine works flawlessly out-of-the-box on Kotlin/Wasm would attract web developers.
+
+### 3. Developer Experience (DX) & Advocacy
+- **Interactive Documentation Portal / Storybook**: Build a Compose HTML / Wasm showcase page where developers can interactively tweak layouts, edge styles, animations, and instantly copy-paste code snippets.
+- **Templates Gallery**: Provide pre-built templates for common use-cases, e.g., Family Trees, Mind Maps, Flowcharts, State Machines, and Org Charts.
+- **Detailed Getting Started Guides**: Expand on real-world integrations (like the corporate ownership tree in Investigo) with blog posts on Medium, Dev.to, or YouTube videos demonstrating KmpGraphine.
+- **Flawless Test Suite**: Keep the test suite 100% green and integrated with CI to guarantee stability and build confidence for production-ready adoption.

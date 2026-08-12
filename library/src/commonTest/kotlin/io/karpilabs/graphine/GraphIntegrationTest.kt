@@ -18,7 +18,6 @@ package io.karpilabs.graphine
 
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.unit.IntSize
-import io.karpilabs.graphine.model.EdgeConfig
 import io.karpilabs.graphine.model.GraphConfig
 import io.karpilabs.graphine.model.GraphEdge
 import io.karpilabs.graphine.model.GraphGroup
