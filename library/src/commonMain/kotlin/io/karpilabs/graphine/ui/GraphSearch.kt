@@ -65,14 +65,17 @@ fun GraphSearch(
         TextField(
             value = query,
             onValueChange = { newValue ->
-                query = newValue
-                // Auto-fly to first match
-                if (newValue.length >= 2) {
-                    val match = state.nodeStates.keys.find {
-                        nodeLabelProvider(it).contains(newValue, ignoreCase = true)
-                    }
-                    match?.let {
-                        scope.launch { state.flyToNodeAnimated(it, viewportWidth, viewportHeight) }
+                // Guard: limit max search query length to 100 characters to protect against CPU/memory exhaustion DoS
+                if (newValue.length <= 100) {
+                    query = newValue
+                    // Auto-fly to first match
+                    if (newValue.length >= 2) {
+                        val match = state.nodeStates.keys.find {
+                            nodeLabelProvider(it).contains(newValue, ignoreCase = true)
+                        }
+                        match?.let {
+                            scope.launch { state.flyToNodeAnimated(it, viewportWidth, viewportHeight) }
+                        }
                     }
                 }
             },
