@@ -38,37 +38,19 @@
     <div id="root"></div>
     <script src="index.js"></script>
     <script>
-        // Wait for WASM and bundle to load, then call main()
-        function initApp() {
+        // Call entry point after bundle loads
+        setTimeout(() => {
             try {
-                // Try mainSimple first (basic demo, no Skiko)
-                if (typeof window !== 'undefined' && window.mainSimple) {
-                    console.log('Initializing basic demo...');
-                    window.mainSimple();
-                    console.log('Demo initialized successfully');
-                    return;
+                if (typeof main === 'function') {
+                    console.log('Calling main()...');
+                    main();
+                } else {
+                    console.error('main() not found. Available globals:', Object.keys(window).filter(k => k.includes('main') || k.includes('Main')));
                 }
-                // Fall back to full graph demo
-                if (typeof window !== 'undefined' && window.main) {
-                    console.log('Initializing full KmpGraphine...');
-                    window.main();
-                    console.log('KmpGraphine initialized successfully');
-                    return;
-                }
-                console.warn('No entry point found, retrying...');
-                setTimeout(initApp, 100);
             } catch (e) {
-                console.error('Error initializing app:', e);
-                console.error('Stack:', e.stack);
+                console.error('Error calling main():', e);
             }
-        }
-
-        // Give bundle time to load and WASM to initialize
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', initApp);
-        } else {
-            setTimeout(initApp, 50);
-        }
+        }, 200);
     </script>
 </body>
 </html>
