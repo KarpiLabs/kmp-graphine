@@ -22,6 +22,14 @@ kotlin {
 
     jvm("desktop")
 
+    js {
+        browser {
+            commonWebpackConfig {
+                outputFileName = "index.js"
+            }
+        }
+    }
+
     iosArm64()
     iosSimulatorArm64()
 
