@@ -46,6 +46,11 @@ kotlin {
     }
 }
 
+// Disable desktop tests on headless environments
+tasks.withType<AbstractTestTask>().matching { it.name.contains("desktopTest") }.forEach {
+    it.enabled = false
+}
+
 dependencies {
     "androidRuntimeClasspath"(libs.compose.uiTooling)
 }
@@ -118,9 +123,4 @@ mavenPublishing {
             developerConnection.set("scm:git:ssh://github.com/KarpiLabs/kmp-graphine.git")
         }
     }
-}
-
-// Disable desktop tests
-tasks.withType<AbstractTestTask>().matching { it.name.contains("desktopTest") }.forEach {
-    it.enabled = false
 }

@@ -360,8 +360,7 @@ class ForceSimulation<T>(
     }
 
     private companion object {
-        fun packCell(cx: Int, cy: Int): Long =
-            (cx.toLong() shl 32) xor (cy.toLong() and 0xffffffffL)
+        fun packCell(cx: Int, cy: Int): Long = (cx.toLong() shl 32) xor (cy.toLong() and 0xffffffffL)
 
         fun unpackCellX(key: Long): Int = (key shr 32).toInt()
 

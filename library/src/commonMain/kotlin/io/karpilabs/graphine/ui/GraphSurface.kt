@@ -44,7 +44,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
@@ -276,6 +275,32 @@ fun <T> GraphSurface(
                             drawPath(
                                 path = path,
                                 brush = brush,
+                                style = Stroke(
+                                    width = edgeConfig.width,
+                                    cap = edgeConfig.strokeCap,
+                                    pathEffect = edgeConfig.pathEffect,
+                                ),
+                            )
+                        }
+                        EdgeStyle.ORTHOGONAL -> {
+                            val path = Path().apply {
+                                moveTo(fromPos.x, fromPos.y)
+                                if (kotlin.math.abs(toPos.y - fromPos.y) > kotlin.math.abs(toPos.x - fromPos.x)) {
+                                    // Vertical flow: middle-Y split
+                                    val midY = (fromPos.y + toPos.y) / 2f
+                                    lineTo(fromPos.x, midY)
+                                    lineTo(toPos.x, midY)
+                                } else {
+                                    // Horizontal flow: middle-X split
+                                    val midX = (fromPos.x + toPos.x) / 2f
+                                    lineTo(midX, fromPos.y)
+                                    lineTo(midX, toPos.y)
+                                }
+                                lineTo(toPos.x, toPos.y)
+                            }
+                            drawPath(
+                                path = path,
+                                color = baseColor,
                                 style = Stroke(
                                     width = edgeConfig.width,
                                     cap = edgeConfig.strokeCap,

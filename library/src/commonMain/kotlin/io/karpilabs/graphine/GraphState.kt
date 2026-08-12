@@ -412,6 +412,33 @@ class GraphState<T>(
     }
 
     /**
+     * Returns a list of all nodes that are currently visible (i.e., not hidden by any collapsed ancestor).
+     */
+    fun getVisibleNodes(): List<GraphNode<T>> = nodeStates.values.map { it.node }.filter { isNodeVisible(it.id) }
+
+    /**
+     * Checks if a node is a root node (i.e., has no incoming edges).
+     */
+    fun isRootNode(nodeId: String): Boolean = edges.none { it.to == nodeId }
+
+    /**
+     * Finds all descendant node IDs for a given node.
+     * Traverses down the edges starting from the specified node.
+     */
+    fun getDescendants(nodeId: String): Set<String> {
+        val descendants = mutableSetOf<String>()
+        fun collect(id: String) {
+            edges.filter { it.from == id }.forEach { edge ->
+                if (descendants.add(edge.to)) {
+                    collect(edge.to)
+                }
+            }
+        }
+        collect(nodeId)
+        return descendants
+    }
+
+    /**
      * Resets all visual focus, highlights, and selections.
      */
     fun clearInteractions() {

@@ -26,6 +26,7 @@ import androidx.compose.ui.graphics.StrokeCap
 enum class EdgeStyle {
     STRAIGHT,
     CURVED, // Cubic Bézier
+    ORTHOGONAL, // Stepped right-angle lines
 }
 
 /**
