@@ -55,13 +55,7 @@ private fun HelloWeb() {
     }
 }
 
-fun main() {
-    renderComposable(rootElementId = "root") {
-        HelloWeb()
-    }
-}
-
-// For testing: alternative to simple demo
-fun mainFull() {
-    // TODO: call main from Main.kt when Skiko is fixed
+// Initialize immediately when module loads
+renderComposable(rootElementId = "root") {
+    HelloWeb()
 }
