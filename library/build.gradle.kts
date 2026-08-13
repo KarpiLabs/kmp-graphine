@@ -11,7 +11,7 @@ plugins {
 }
 
 group = "io.karpilabs"
-version = "1.0.0"
+version = "1.1.0"
 
 kotlin {
     android {
@@ -21,6 +21,14 @@ kotlin {
     }
 
     jvm("desktop")
+
+    js {
+        browser {
+            commonWebpackConfig {
+                outputFileName = "index.js"
+            }
+        }
+    }
 
     iosArm64()
     iosSimulatorArm64()
