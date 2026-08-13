@@ -23,6 +23,7 @@ import androidx.compose.ui.geometry.Offset
 import io.karpilabs.graphine.GraphState
 import io.karpilabs.graphine.model.GraphEdge
 import io.karpilabs.graphine.model.GraphNode
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -442,7 +443,9 @@ fun <T> rememberForceSimulation(
                 }
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            if (e is CancellationException) throw e
+            // Fail securely and silently in production to avoid exposing internal thread/stack trace details.
+            // Catching generic Exceptions gracefully prevents unexpected simulation/floating-point errors from crashing the UI thread.
         }
     }
 
