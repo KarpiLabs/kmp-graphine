@@ -1,5 +1,6 @@
 package io.karpilabs.graphine.showcase
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,7 +11,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
@@ -33,6 +42,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import io.karpilabs.graphine.GraphState
+import io.karpilabs.graphine.export.GraphExport
+import io.karpilabs.graphine.export.toPngBytes
 import io.karpilabs.graphine.layout.ForceDirectedLayout
 import io.karpilabs.graphine.layout.GraphLayout
 import io.karpilabs.graphine.layout.TreeLayout
@@ -48,6 +59,7 @@ import io.karpilabs.graphine.ui.GraphSurface
 import io.karpilabs.graphine.ui.Minimap
 import io.karpilabs.graphine.ui.ZoomControls
 import kotlinx.coroutines.launch
+import java.io.File
 
 enum class Department(val color: Color) {
     EXECUTIVE(Color(0xFF9E9E9E)),
@@ -114,6 +126,10 @@ private fun Showcase() {
 
     var viewportSize by remember { mutableStateOf(IntSize.Zero) }
     var layoutChoice by remember { mutableStateOf(LayoutChoice.TREE) }
+    var boxSelectEnabled by remember { mutableStateOf(false) }
+    var portConnectEnabled by remember { mutableStateOf(false) }
+    var exportMenuExpanded by remember { mutableStateOf(false) }
+    var exportStatus by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(layoutChoice, viewportSize) {
         if (viewportSize == IntSize.Zero) return@LaunchedEffect
@@ -129,11 +145,60 @@ private fun Showcase() {
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        LayoutPicker(
-            selected = layoutChoice,
-            onSelect = { layoutChoice = it },
-            modifier = Modifier.padding(12.dp),
-        )
+        Row(modifier = Modifier.padding(12.dp)) {
+            LayoutPicker(
+                selected = layoutChoice,
+                onSelect = { layoutChoice = it },
+            )
+            FilterChip(
+                selected = boxSelectEnabled,
+                onClick = {
+                    boxSelectEnabled = !boxSelectEnabled
+                    if (boxSelectEnabled) portConnectEnabled = false
+                },
+                label = { Text("Box Select") },
+                modifier = Modifier.padding(start = 12.dp),
+            )
+            FilterChip(
+                selected = portConnectEnabled,
+                onClick = {
+                    portConnectEnabled = !portConnectEnabled
+                    if (portConnectEnabled) boxSelectEnabled = false
+                },
+                label = { Text("Connect Ports") },
+                modifier = Modifier.padding(start = 8.dp),
+            )
+            Box(modifier = Modifier.padding(start = 8.dp)) {
+                IconButton(onClick = { exportMenuExpanded = true }) {
+                    Icon(Icons.Filled.FileDownload, contentDescription = "Export")
+                }
+                DropdownMenu(
+                    expanded = exportMenuExpanded,
+                    onDismissRequest = { exportMenuExpanded = false },
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Export as SVG") },
+                        onClick = {
+                            exportMenuExpanded = false
+                            val file = File(System.getProperty("user.home"), "kmpgraphine-export.svg")
+                            file.writeText(GraphExport.toSvg(state, nodeLabel = { it.data.name }))
+                            exportStatus = "Saved ${file.absolutePath}"
+                        },
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Export as PNG") },
+                        onClick = {
+                            exportMenuExpanded = false
+                            val file = File(System.getProperty("user.home"), "kmpgraphine-export.png")
+                            val model = GraphExport.buildModel(state, nodeLabel = { it.data.name })
+                            file.writeBytes(model.toPngBytes())
+                            exportStatus = "Saved ${file.absolutePath}"
+                        },
+                    )
+                }
+            }
+        }
+        exportStatus?.let { Text(it, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(start = 12.dp)) }
 
         Box(
             modifier = Modifier
@@ -143,13 +208,20 @@ private fun Showcase() {
             GraphSurface(
                 state = state,
                 edgeConfig = EdgeConfig(showArrowheads = true),
+                selectionMode = boxSelectEnabled,
+                enablePortConnections = portConnectEnabled,
                 onNodeClick = { node ->
                     scope.launch {
                         state.centerOnNodeAnimated(node.id, viewportSize.width.toFloat(), viewportSize.height.toFloat())
                     }
                 },
+                onCreateEdge = { fromId, fromPort, toId ->
+                    if (fromId != toId && state.edges.none { it.from == fromId && it.to == toId }) {
+                        state.edges = state.edges + GraphEdge(from = fromId, to = toId, fromPort = fromPort)
+                    }
+                },
             ) { node, isDetailVisible ->
-                EmployeeCard(node.data, isDetailVisible)
+                EmployeeCard(node.data, isDetailVisible, isSelected = state.selectedNodeIds.contains(node.id))
             }
 
             GraphSearch(
@@ -157,7 +229,7 @@ private fun Showcase() {
                 viewportWidth = viewportSize.width.toFloat(),
                 viewportHeight = viewportSize.height.toFloat(),
                 nodeLabelProvider = { id -> nodes.find { it.id == id }?.data?.name ?: id },
-                modifier = Modifier.align(Alignment.TopCenter).width(360.dp),
+                modifier = Modifier.align(Alignment.TopStart).width(320.dp),
             )
 
             Minimap(
@@ -198,8 +270,16 @@ private fun LayoutPicker(selected: LayoutChoice, onSelect: (LayoutChoice) -> Uni
 }
 
 @Composable
-private fun EmployeeCard(employee: Employee, isDetailVisible: Boolean) {
-    Card(modifier = Modifier.width(190.dp)) {
+private fun EmployeeCard(employee: Employee, isDetailVisible: Boolean, isSelected: Boolean = false) {
+    Card(
+        modifier = Modifier.width(190.dp),
+        border = if (isSelected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
+        colors = if (isSelected) {
+            CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+        } else {
+            CardDefaults.cardColors()
+        },
+    ) {
         Row {
             Box(
                 modifier = Modifier

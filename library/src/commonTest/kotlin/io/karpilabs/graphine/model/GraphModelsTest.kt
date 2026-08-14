@@ -53,6 +53,20 @@ class GraphModelsTest {
     }
 
     @Test
+    fun testGraphEdgePortsDefaultToNull() {
+        val edge = GraphEdge(from = "1", to = "2")
+        assertEquals(null, edge.fromPort)
+        assertEquals(null, edge.toPort)
+    }
+
+    @Test
+    fun testGraphEdgeWithExplicitPorts() {
+        val edge = GraphEdge(from = "1", to = "2", fromPort = NodePort.RIGHT, toPort = NodePort.LEFT)
+        assertEquals(NodePort.RIGHT, edge.fromPort)
+        assertEquals(NodePort.LEFT, edge.toPort)
+    }
+
+    @Test
     fun testGraphGroupCreation() {
         val group = GraphGroup(
             id = "group1",
@@ -127,8 +141,8 @@ class GraphModelsTest {
     @Test
     fun testGraphConfigDefaults() {
         val config = GraphConfig()
-        assertEquals(0.7f, config.detailZoomThreshold)
-        assertEquals(40f, config.viewportPadding)
+        assertEquals(0.6f, config.detailZoomThreshold)
+        assertEquals(100f, config.viewportPadding)
     }
 
     @Test

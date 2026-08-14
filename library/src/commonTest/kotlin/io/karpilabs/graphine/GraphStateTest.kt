@@ -17,6 +17,7 @@
 package io.karpilabs.graphine
 
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.unit.IntSize
 import io.karpilabs.graphine.model.GraphEdge
 import io.karpilabs.graphine.model.GraphNode
@@ -58,6 +59,43 @@ class GraphStateTest {
         state.onNodeDragged("1", Offset(62f, 22f))
 
         assertEquals(Offset(50f, 0f), state.nodeStates["1"]?.position)
+    }
+
+    @Test
+    fun testNodesInRectSelectsOverlappingNodes() {
+        val n1 = GraphNode("1", "A")
+        val n2 = GraphNode("2", "B")
+        val n3 = GraphNode("3", "C")
+        val state = GraphState(initialNodes = listOf(n1, n2, n3))
+
+        state.onNodeDragged("1", Offset(0f, 0f))
+        state.onNodeResized("1", IntSize(20, 20))
+        state.onNodeDragged("2", Offset(100f, 100f))
+        state.onNodeResized("2", IntSize(20, 20))
+        state.onNodeDragged("3", Offset(500f, 500f))
+        state.onNodeResized("3", IntSize(20, 20))
+
+        val selected = state.nodesInRect(Rect(-10f, -10f, 130f, 130f))
+
+        assertEquals(setOf("1", "2"), selected)
+    }
+
+    @Test
+    fun testNodesInRectExcludesCollapsedDescendants() {
+        val parent = GraphNode("p", "Parent")
+        val child = GraphNode("c", "Child")
+        val state = GraphState(
+            initialNodes = listOf(parent, child),
+            initialEdges = listOf(GraphEdge("p", "c")),
+        )
+        state.onNodeResized("p", IntSize(10, 10))
+        state.onNodeResized("c", IntSize(10, 10))
+        state.onNodeDragged("c", Offset(5f, 5f))
+        state.toggleCollapse("p")
+
+        val selected = state.nodesInRect(Rect(-100f, -100f, 100f, 100f))
+
+        assertFalse(selected.contains("c"))
     }
 
     @Test

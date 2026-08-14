@@ -17,18 +17,12 @@
 package io.karpilabs.graphine.model
 
 /**
- * Represents a directional connection between two nodes.
- *
- * @property from The ID of the source node.
- * @property to The ID of the destination node.
- * @property fromPort Optional fixed anchor on the source node's boundary. When null, the edge
- *                     originates from the node's center (or is clipped to the boundary nearest
- *                     the other endpoint, depending on renderer).
- * @property toPort Optional fixed anchor on the destination node's boundary.
+ * A fixed anchor point on a node's boundary that an edge can attach to, so lines
+ * originate/terminate from a specific side instead of the node's center.
  */
-data class GraphEdge(
-    val from: String,
-    val to: String,
-    val fromPort: NodePort? = null,
-    val toPort: NodePort? = null,
-)
+enum class NodePort {
+    TOP,
+    BOTTOM,
+    LEFT,
+    RIGHT,
+}

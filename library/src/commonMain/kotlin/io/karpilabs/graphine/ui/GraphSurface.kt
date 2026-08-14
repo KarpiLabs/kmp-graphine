@@ -28,6 +28,8 @@ import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -53,6 +55,7 @@ import androidx.compose.ui.input.pointer.positionChanged
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.toSize
 import io.karpilabs.graphine.GraphState
 import io.karpilabs.graphine.model.DotStyle
@@ -60,6 +63,7 @@ import io.karpilabs.graphine.model.EdgeConfig
 import io.karpilabs.graphine.model.EdgeStyle
 import io.karpilabs.graphine.model.GraphGroup
 import io.karpilabs.graphine.model.GraphNode
+import io.karpilabs.graphine.model.NodePort
 import io.karpilabs.graphine.model.NodeRenderMode
 import kotlinx.coroutines.launch
 import kotlin.math.atan2
@@ -67,6 +71,12 @@ import kotlin.math.cos
 import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.math.sqrt
+
+/** Live drag-to-link state: dragging from [fromId]'s [port] toward [current] (content-space). */
+private data class PendingLink(val fromId: String, val port: NodePort, val anchor: Offset, val current: Offset)
+
+private val PORT_HANDLE_SIZE = 12.dp
+private const val PORT_HANDLE_RADIUS_PX = 6f
 
 /**
  * The main UI entry point for KmpGraphine.
@@ -79,6 +89,16 @@ import kotlin.math.sqrt
  * @param dotStyle Visual styling for dots in [NodeRenderMode.DOT] mode. Ignored in [NodeRenderMode.COMPOSABLE] mode.
  * @param onNodeDragged Optional callback while a node is being dragged (each move). Useful for pinning/syncing physics.
  * @param onNodeDragEnd Optional callback when a node drag gesture ends. Useful for unpinning a simulated node.
+ * @param selectionMode When true, dragging on empty canvas draws a box-select rectangle instead of
+ *                       panning; nodes whose bounds overlap the box are added to [GraphState.selectedNodeIds]
+ *                       live as the drag proceeds. Only applies to [NodeRenderMode.COMPOSABLE]; ignored in
+ *                       [NodeRenderMode.DOT] (where empty-space drags always pan).
+ * @param enablePortConnections When true (and [nodeRenderMode] is [NodeRenderMode.COMPOSABLE]), renders small
+ *                               drag handles on each node's TOP/BOTTOM/LEFT/RIGHT edges. Dragging from a handle
+ *                               onto another node invokes [onCreateEdge]; the library does not mutate [GraphState.edges]
+ *                               itself, so callers add the edge (typically with the dragged-from [NodePort] as
+ *                               [io.karpilabs.graphine.model.GraphEdge.fromPort]) in that callback.
+ * @param onCreateEdge Invoked when a port drag is released over another node: `(fromNodeId, fromPort, toNodeId)`.
  * @param nodeContent Composable content for each node. Required for [NodeRenderMode.COMPOSABLE], ignored for [NodeRenderMode.DOT].
  */
 @Composable
@@ -95,12 +115,15 @@ fun <T> GraphSurface(
     enableZoom: Boolean = true,
     enablePanning: Boolean = true,
     enablePathHighlighting: Boolean = true,
+    selectionMode: Boolean = false,
+    enablePortConnections: Boolean = false,
     nodeRenderMode: NodeRenderMode = NodeRenderMode.COMPOSABLE,
     dotStyle: DotStyle<T> = DotStyle(),
     onNodeClick: ((GraphNode<T>) -> Unit)? = null,
     onNodeLongClick: ((GraphNode<T>) -> Unit)? = null,
     onNodeDragged: ((GraphNode<T>) -> Unit)? = null,
     onNodeDragEnd: ((GraphNode<T>) -> Unit)? = null,
+    onCreateEdge: ((fromNodeId: String, fromPort: NodePort, toNodeId: String) -> Unit)? = null,
     nodeContent: (@Composable (node: GraphNode<T>, isDetailVisible: Boolean) -> Unit)? = null,
 ) {
     require(nodeRenderMode != NodeRenderMode.COMPOSABLE || nodeContent != null) {
@@ -108,6 +131,8 @@ fun <T> GraphSurface(
     }
     val scope = rememberCoroutineScope()
     var surfaceSize by remember { mutableStateOf(Size.Zero) }
+    var selectionBoxScreen by remember { mutableStateOf<Rect?>(null) }
+    var pendingLink by remember { mutableStateOf<PendingLink?>(null) }
     val resolvedGridColor = gridColor ?: MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
 
     // IMPORTANT: do NOT assign `state.offset/scale = anim.value` every composition.
@@ -170,7 +195,29 @@ fun <T> GraphSurface(
             .pointerInput(Unit) {
                 detectTapGestures(onTap = { state.clearInteractions() })
             }
-            .pointerInput(enablePanning) {
+            .pointerInput(enablePanning, selectionMode) {
+                if (selectionMode) {
+                    var startScreen = Offset.Zero
+                    detectDragGestures(
+                        onDragStart = { pos ->
+                            startScreen = pos
+                            selectionBoxScreen = Rect(pos, pos)
+                        },
+                        onDrag = { change, _ ->
+                            change.consume()
+                            val box = normalizeRect(startScreen, change.position)
+                            selectionBoxScreen = box
+                            val contentRect = normalizeRect(
+                                (box.topLeft - state.offset) / state.scale,
+                                (box.bottomRight - state.offset) / state.scale,
+                            )
+                            state.selectedNodeIds = state.nodesInRect(contentRect)
+                        },
+                        onDragEnd = { selectionBoxScreen = null },
+                        onDragCancel = { selectionBoxScreen = null },
+                    )
+                    return@pointerInput
+                }
                 if (!enablePanning) return@pointerInput
                 val velocityTracker = VelocityTracker()
                 detectDragGestures(
@@ -225,6 +272,16 @@ fun <T> GraphSurface(
                     translationY = state.offset.y,
                 ),
         ) {
+            // Obstacle-avoidance routing and port anchors only apply in COMPOSABLE mode: computing
+            // per-node rects is an O(nodes) scan that's fine for rich-content graphs but wasted
+            // work for the 1000+ node DOT-mode graphs this library also targets.
+            val routingRects: Map<String, Rect> = if (nodeRenderMode == NodeRenderMode.COMPOSABLE) {
+                state.nodeStates.filterKeys { state.isNodeVisible(it) }
+                    .mapValues { (_, ns) -> Rect(ns.position, ns.size.toSize()) }
+            } else {
+                emptyMap()
+            }
+
             // 1. Draw Group Zones
             Canvas(modifier = Modifier.fillMaxSize()) {
                 state.groups.forEach { group -> drawGroupZone(group, state) }
@@ -234,9 +291,27 @@ fun <T> GraphSurface(
             Canvas(modifier = Modifier.fillMaxSize()) {
                 state.edges.forEach { edge ->
                     if (!state.isNodeVisible(edge.from) || !state.isNodeVisible(edge.to)) return@forEach
-                    val fromPos = state.getNodeCenter(edge.from)
-                    val toPos = state.getNodeCenter(edge.to)
-                    if (fromPos == Offset.Zero || toPos == Offset.Zero) return@forEach
+                    val fromCenter = state.getNodeCenter(edge.from)
+                    val toCenter = state.getNodeCenter(edge.to)
+                    if (fromCenter == Offset.Zero || toCenter == Offset.Zero) return@forEach
+
+                    val bow = if (routingRects.isNotEmpty()) {
+                        findObstacleBow(fromCenter, toCenter, edge.from, edge.to, routingRects)
+                    } else {
+                        null
+                    }
+                    val fromRect = routingRects[edge.from]
+                    val toRect = routingRects[edge.to]
+                    val fromPos = when {
+                        edge.fromPort != null && fromRect != null -> portAnchor(fromRect, edge.fromPort)
+                        fromRect != null -> clipToRectBoundary(fromCenter, bow ?: toCenter, fromRect)
+                        else -> fromCenter
+                    }
+                    val toPos = when {
+                        edge.toPort != null && toRect != null -> portAnchor(toRect, edge.toPort)
+                        toRect != null -> clipToRectBoundary(toCenter, bow ?: fromCenter, toRect)
+                        else -> toCenter
+                    }
 
                     val isHighlighted = state.highlightedEdgeIds.isEmpty() ||
                         state.highlightedEdgeIds.contains(edge.from to edge.to)
@@ -246,26 +321,46 @@ fun <T> GraphSurface(
 
                     when (edgeConfig.style) {
                         EdgeStyle.STRAIGHT -> {
-                            drawLine(
-                                color = baseColor,
-                                start = fromPos,
-                                end = toPos,
-                                strokeWidth = edgeConfig.width,
-                                cap = edgeConfig.strokeCap,
-                                pathEffect = edgeConfig.pathEffect,
-                            )
+                            if (bow != null) {
+                                val path = Path().apply {
+                                    moveTo(fromPos.x, fromPos.y)
+                                    quadraticTo(bow.x, bow.y, toPos.x, toPos.y)
+                                }
+                                drawPath(
+                                    path = path,
+                                    color = baseColor,
+                                    style = Stroke(
+                                        width = edgeConfig.width,
+                                        cap = edgeConfig.strokeCap,
+                                        pathEffect = edgeConfig.pathEffect,
+                                    ),
+                                )
+                            } else {
+                                drawLine(
+                                    color = baseColor,
+                                    start = fromPos,
+                                    end = toPos,
+                                    strokeWidth = edgeConfig.width,
+                                    cap = edgeConfig.strokeCap,
+                                    pathEffect = edgeConfig.pathEffect,
+                                )
+                            }
                         }
                         EdgeStyle.CURVED -> {
                             val path = Path().apply {
                                 moveTo(fromPos.x, fromPos.y)
-                                cubicTo(
-                                    fromPos.x,
-                                    (fromPos.y + toPos.y) / 2,
-                                    toPos.x,
-                                    (fromPos.y + toPos.y) / 2,
-                                    toPos.x,
-                                    toPos.y,
-                                )
+                                if (bow != null) {
+                                    quadraticTo(bow.x, bow.y, toPos.x, toPos.y)
+                                } else {
+                                    cubicTo(
+                                        fromPos.x,
+                                        (fromPos.y + toPos.y) / 2,
+                                        toPos.x,
+                                        (fromPos.y + toPos.y) / 2,
+                                        toPos.x,
+                                        toPos.y,
+                                    )
+                                }
                             }
                             val brush = Brush.linearGradient(
                                 colors = listOf(baseColor, baseColor.copy(alpha = 0.1f * pathAlpha)),
@@ -309,7 +404,12 @@ fun <T> GraphSurface(
                             )
                         }
                     }
-                    if (edgeConfig.showArrowheads) drawArrowhead(toPos, fromPos, edgeConfig, pathAlpha)
+                    if (edgeConfig.showArrowheads) {
+                        // When bowed, point the arrowhead along the curve's incoming tangent (bow -> toPos)
+                        // rather than the straight line from fromPos, which would look wrong.
+                        val arrowFrom = if (bow != null && edgeConfig.style != EdgeStyle.ORTHOGONAL) bow else fromPos
+                        drawArrowhead(toPos, arrowFrom, edgeConfig, pathAlpha)
+                    }
                 }
             }
 
@@ -350,6 +450,64 @@ fun <T> GraphSurface(
                             },
                     ) {
                         nodeContent?.invoke(nodeState.node, isDetailVisible)
+                    }
+                }
+
+                if (enablePortConnections) {
+                    val portColor = MaterialTheme.colorScheme.primary
+                    state.nodeStates.forEach { (id, nodeState) ->
+                        if (!state.isNodeVisible(id)) return@forEach
+                        val rect = routingRects[id] ?: return@forEach
+                        NodePort.entries.forEach { port ->
+                            val anchor = portAnchor(rect, port)
+                            Box(
+                                modifier = Modifier
+                                    .offset {
+                                        IntOffset(
+                                            (anchor.x - PORT_HANDLE_RADIUS_PX).roundToInt(),
+                                            (anchor.y - PORT_HANDLE_RADIUS_PX).roundToInt(),
+                                        )
+                                    }
+                                    .size(PORT_HANDLE_SIZE)
+                                    .background(portColor, CircleShape)
+                                    .pointerInput(id, port) {
+                                        detectDragGestures(
+                                            onDragStart = { pendingLink = PendingLink(id, port, anchor, anchor) },
+                                            onDrag = { change, dragAmount ->
+                                                change.consume()
+                                                pendingLink = pendingLink?.let {
+                                                    it.copy(current = it.current + dragAmount / state.scale)
+                                                }
+                                            },
+                                            onDragEnd = {
+                                                val link = pendingLink
+                                                pendingLink = null
+                                                val target = link?.let { l ->
+                                                    routingRects.entries.firstOrNull { (rid, r) ->
+                                                        rid != id && r.contains(l.current)
+                                                    }?.key
+                                                }
+                                                if (link != null && target != null) {
+                                                    onCreateEdge?.invoke(id, port, target)
+                                                }
+                                            },
+                                            onDragCancel = { pendingLink = null },
+                                        )
+                                    },
+                            )
+                        }
+                    }
+
+                    pendingLink?.let { link ->
+                        Canvas(modifier = Modifier.fillMaxSize()) {
+                            drawLine(
+                                color = portColor,
+                                start = link.anchor,
+                                end = link.current,
+                                strokeWidth = 2f,
+                                pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 8f), 0f),
+                            )
+                        }
                     }
                 }
             } else {
@@ -464,8 +622,24 @@ fun <T> GraphSurface(
                 }
             }
         }
+
+        selectionBoxScreen?.let { box ->
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val selectionColor = Color(0xFF2196F3)
+                drawRect(color = selectionColor.copy(alpha = 0.12f), topLeft = box.topLeft, size = box.size)
+                drawRect(color = selectionColor, topLeft = box.topLeft, size = box.size, style = Stroke(width = 1.5f))
+            }
+        }
     }
 }
+
+/** Normalizes two arbitrary corner points into a [Rect] with non-negative width/height. */
+private fun normalizeRect(a: Offset, b: Offset): Rect = Rect(
+    left = minOf(a.x, b.x),
+    top = minOf(a.y, b.y),
+    right = maxOf(a.x, b.x),
+    bottom = maxOf(a.y, b.y),
+)
 
 private fun DrawScope.drawArrowhead(to: Offset, from: Offset, config: EdgeConfig, alpha: Float = 1f) {
     val angle = atan2(to.y - from.y, to.x - from.x)

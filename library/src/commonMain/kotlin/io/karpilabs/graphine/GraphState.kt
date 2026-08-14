@@ -30,6 +30,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.toSize
 import io.karpilabs.graphine.model.*
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
@@ -446,6 +447,18 @@ class GraphState<T>(
         highlightedNodeIds = emptySet()
         highlightedEdgeIds = emptySet()
     }
+
+    /**
+     * Returns the IDs of all visible nodes whose bounding box overlaps [rect].
+     *
+     * Coordinates are in content space (the same space as [GraphNodeState.position]),
+     * i.e. before the viewport's pan/zoom transform is applied. Used to power box/lasso
+     * selection: callers translate a screen-space drag rectangle into content space
+     * (`(screenPoint - offset) / scale`) before calling this.
+     */
+    fun nodesInRect(rect: Rect): Set<String> = _nodeStates.filterValues { ns ->
+        isNodeVisible(ns.node.id) && Rect(ns.position, ns.size.toSize()).overlaps(rect)
+    }.keys
 
     /**
      * Manually update the position of multiple nodes.
