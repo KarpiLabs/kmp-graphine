@@ -95,4 +95,22 @@ class GraphExportTest {
         assertTrue(model.edges.isEmpty())
         assertEquals(1, model.nodes.size)
     }
+
+    @Test
+    fun testToSvgSanitizesInvalidXmlCharacters() {
+        // Label contains invalid control characters (\u0000, \u0008, \u001F) and a valid emoji (UTF-16 surrogate pair)
+        val nodes = listOf(GraphNode("1", "Hello\u0000World\u0008!\u001F😊"))
+        val state = GraphState(initialNodes = nodes)
+        state.onNodeDragged("1", Offset(0f, 0f))
+
+        val svg = GraphExport.toSvg(state, nodeLabel = { it.data })
+
+        // Check that the invalid XML control characters were stripped out
+        assertTrue(!svg.contains("\u0000"))
+        assertTrue(!svg.contains("\u0008"))
+        assertTrue(!svg.contains("\u001F"))
+
+        // Check that valid text and the emoji are preserved
+        assertTrue(svg.contains("HelloWorld!😊"))
+    }
 }

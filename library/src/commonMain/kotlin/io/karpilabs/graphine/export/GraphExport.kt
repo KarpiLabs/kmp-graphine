@@ -172,12 +172,25 @@ object GraphExport {
         return if (rounded == rounded.toLong().toFloat()) rounded.toLong().toString() else rounded.toString()
     }
 
-    private fun escapeXml(text: String): String = text
-        .replace("&", "&amp;")
-        .replace("<", "&lt;")
-        .replace(">", "&gt;")
-        .replace("\"", "&quot;")
-        .replace("'", "&apos;")
+    private fun escapeXml(text: String): String {
+        val sanitized = StringBuilder()
+        for (c in text) {
+            val code = c.code
+            val isValid = code == 0x9 || code == 0xA || code == 0xD ||
+                (code in 0x20..0xD7FF) ||
+                (code in 0xE000..0xFFFD) ||
+                (code in 0xD800..0xDFFF)
+            if (isValid) {
+                sanitized.append(c)
+            }
+        }
+        return sanitized.toString()
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace("\"", "&quot;")
+            .replace("'", "&apos;")
+    }
 }
 
 private fun Color.toCssColor(): String {
