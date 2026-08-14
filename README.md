@@ -23,6 +23,9 @@ KmpGraphine offers an interactive way to explore relational data with a polished
   - Tree layout: hierarchical branching with grid based clustering for dense node sets.
   - Force directed layout: organic, physics based positioning.
 - UI components: built in `Minimap`, `GraphControls`, and `ZoomControls`.
+- Bulk interaction: box/lasso select (`selectionMode`) and drag-to-link node ports (`enablePortConnections`).
+- Edge routing: endpoint clipping and heuristic obstacle avoidance so lines don't cut through unrelated nodes.
+- Export: `GraphExport.toSvg(...)` (all targets) and `GraphExportModel.toPngBytes()` (Desktop/JVM).
 
 ## Usage
 
@@ -70,6 +73,29 @@ Box(Modifier.fillMaxSize()) {
 }
 ```
 
+### 4. Box select, port connections, and export
+```kotlin
+GraphSurface(
+    state = state,
+    selectionMode = boxSelectEnabled,       // drag on empty canvas to select multiple nodes
+    enablePortConnections = portsEnabled,   // drag from a node's edge to link it to another
+    onCreateEdge = { fromId, fromPort, toId ->
+        state.edges = state.edges + GraphEdge(from = fromId, to = toId, fromPort = fromPort)
+    },
+    nodeContent = { node, isDetailVisible -> MyNodeCard(node.data, showText = isDetailVisible) },
+)
+
+// Selected nodes: state.selectedNodeIds
+
+// Export a snapshot (nodes drawn as labeled circles, since node Composables are arbitrary UI):
+val svg = GraphExport.toSvg(state, nodeLabel = { it.data.toString() })
+File("graph.svg").writeText(svg)
+
+// Desktop/JVM only:
+val pngBytes = GraphExport.buildModel(state).toPngBytes()
+File("graph.png").writeBytes(pngBytes)
+```
+
 ## Sample apps
 Runnable Compose Desktop apps demonstrate the library.
 
@@ -109,10 +135,10 @@ In the **Investigo** app, KmpGraphine is used to visualize large corporate owner
 For instructions on publishing to Maven Central, see [PUBLISHING.md](PUBLISHING.md).
 
 ## Library roadmap
-- Edge routing to avoid node overlap
-- Box and lasso selection for bulk operations
-- Node connector ports for drag to link
-- SVG and PNG export
+- [x] Edge routing to avoid node overlap — heuristic single-bow obstacle avoidance plus boundary-clipped endpoints, `GraphSurface` (COMPOSABLE mode)
+- [x] Box and lasso selection for bulk operations — `GraphSurface(selectionMode = true)`
+- [x] Node connector ports for drag to link — `NodePort`, `GraphEdge.fromPort`/`toPort`, `GraphSurface(enablePortConnections = true, onCreateEdge = ...)`
+- [x] SVG and PNG export — `io.karpilabs.graphine.export.GraphExport.toSvg(...)` (all targets), `GraphExportModel.toPngBytes()` (Desktop/JVM only)
 
 ---
 
@@ -122,9 +148,9 @@ To make **KmpGraphine** the go-to graph and hierarchy visualization library for 
 
 ### 1. Enrich Interactive Capabilities
 - **Manhattan / Orthogonal Routing (Added!)**: Great for diagrams, trees, and classic org charts.
-- **Dynamic Port Connections**: Allow specific "ports" on nodes (Top, Bottom, Left, Right) to connect edges, preventing lines from crossing through node card bodies.
-- **Lasso & Box Selection**: Allow drag-to-select multiple nodes simultaneously to move, delete, or group them in bulk.
-- **Edge Routing & Obstacle Avoidance**: Integrate a routing algorithm (like A* or pathfinder) to automatically route edges around non-connected node bounds.
+- **Dynamic Port Connections (Added!)**: Fixed "ports" on nodes (Top, Bottom, Left, Right) that edges can anchor to, plus drag-to-link handles for creating new edges interactively.
+- **Lasso & Box Selection (Added!)**: Drag-to-select multiple nodes simultaneously via `GraphSurface(selectionMode = true)`.
+- **Edge Routing & Obstacle Avoidance (Added!)**: A lightweight heuristic (not full A*/pathfinding) that bows edges around nodes sitting on the direct path, and clips endpoints to node boundaries instead of centers.
 
 ### 2. High-Performance rendering & Optimization
 - **Lazy Canvas / Lazy Layout Nodes**: Currently, 1000+ nodes render fine, but scaling to 10k+ requires a `LazyLayout`-like virtualized composable or a canvas-only fallback when zoomed far out.
