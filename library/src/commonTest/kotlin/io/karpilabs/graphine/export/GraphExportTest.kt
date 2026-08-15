@@ -78,6 +78,20 @@ class GraphExportTest {
     }
 
     @Test
+    fun testToSvgStripsInvalidXmlControlCharacters() {
+        // Includes null byte \u0000, control char \u0007, and surrogate pair \uD83D\uDE00 (😃)
+        val nodes = listOf(GraphNode("1", "Node\u0000\u0007Test \uD83D\uDE00"))
+        val state = GraphState(initialNodes = nodes)
+        state.onNodeDragged("1", Offset(0f, 0f))
+
+        val svg = GraphExport.toSvg(state, nodeLabel = { it.data })
+
+        assertTrue(!svg.contains("\u0000"))
+        assertTrue(!svg.contains("\u0007"))
+        assertTrue(svg.contains("NodeTest \uD83D\uDE00"))
+    }
+
+    @Test
     fun testToSvgCurvedEdgeUsesCubicPath() {
         val svg = GraphExport.toSvg(sampleState(), edgeConfig = EdgeConfig(style = EdgeStyle.CURVED))
 
