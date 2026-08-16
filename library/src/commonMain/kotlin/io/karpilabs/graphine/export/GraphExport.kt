@@ -172,19 +172,28 @@ object GraphExport {
         return if (rounded == rounded.toLong().toFloat()) rounded.toLong().toString() else rounded.toString()
     }
 
+    /**
+     * Escapes XML entity characters and strips invalid XML 1.0 control characters
+     * to ensure generated SVG documents remain well-formed.
+     */
     private fun escapeXml(text: String): String {
-        val sanitized = StringBuilder()
-        for (c in text) {
-            val code = c.code
-            val isValid = code == 0x9 || code == 0xA || code == 0xD ||
-                (code in 0x20..0xD7FF) ||
-                (code in 0xE000..0xFFFD) ||
-                (code in 0xD800..0xDFFF)
-            if (isValid) {
-                sanitized.append(c)
+        val sb = StringBuilder(text.length)
+        var i = 0
+        while (i < text.length) {
+            val c = text[i]
+            if (c == '\t' || c == '\n' || c == '\r' || (c in '\u0020'..'\uD7FF') || (c in '\uE000'..'\uFFFD')) {
+                sb.append(c)
+                i++
+            } else if (c.isHighSurrogate() && i + 1 < text.length && text[i + 1].isLowSurrogate()) {
+                sb.append(c)
+                sb.append(text[i + 1])
+                i += 2
+            } else {
+                // Strip invalid XML control characters and lone surrogates
+                i++
             }
         }
-        return sanitized.toString()
+        return sb.toString()
             .replace("&", "&amp;")
             .replace("<", "&lt;")
             .replace(">", "&gt;")
