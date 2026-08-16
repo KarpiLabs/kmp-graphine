@@ -122,6 +122,15 @@ mavenPublishing {
                 id.set("KarpiLabs")
                 name.set("KarpiLabs LLC")
                 email.set("contact@karpilabs.io")
+                organization.set("KarpiLabs LLC")
+                organizationUrl.set("https://karpilabs.io")
+            }
+            developer {
+                id.set("zkarpinski")
+                name.set("Zach Karpinski")
+                email.set("zach@karpilabs.io")
+                organization.set("KarpiLabs LLC")
+                organizationUrl.set("https://karpilabs.io")
             }
         }
 
