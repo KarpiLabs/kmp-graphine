@@ -210,4 +210,26 @@ class GraphStateTest {
         assertTrue(state.highlightedNodeIds.contains("1"))
         assertTrue(state.highlightedNodeIds.isNotEmpty())
     }
+
+    @Test
+    fun testNonFiniteDragDeltaIsIgnored() {
+        val node = GraphNode("1", "Data")
+        val state = GraphState(initialNodes = listOf(node))
+
+        state.onNodeDragged("1", Offset(10f, 20f))
+        state.onNodeDragged("1", Offset(Float.NaN, Float.POSITIVE_INFINITY))
+
+        assertEquals(Offset(10f, 20f), state.nodeStates["1"]?.position)
+    }
+
+    @Test
+    fun testNonFiniteGetContentBoundsIsHandledSafely() {
+        val node = GraphNode("1", "Data")
+        val state = GraphState(initialNodes = listOf(node))
+        state.onNodeDragged("1", Offset(Float.NaN, Float.NaN))
+
+        val bounds = state.getContentBounds()
+
+        assertEquals(Rect(0f, 0f, 0f, 0f), bounds)
+    }
 }

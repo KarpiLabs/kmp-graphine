@@ -36,6 +36,9 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
+private fun Float.isFiniteNumber(): Boolean = !isNaN() && !isInfinite()
+private fun Offset.isFiniteOffset(): Boolean = x.isFiniteNumber() && y.isFiniteNumber()
+
 /**
  * The central state manager for KmpGraphine.
  *
@@ -87,6 +90,8 @@ class GraphState<T>(
      * composition cannot read stale anim values and clobber the new frame.
      */
     suspend fun snapTo(targetScale: Float, targetOffset: Offset) {
+        // Security guard: Ignore non-finite values (NaN / Infinity) to prevent UI state corruption or freeze
+        if (!targetScale.isFiniteNumber() || !targetOffset.isFiniteOffset()) return
         val s = targetScale.coerceIn(config.minScale, config.maxScale)
         scaleAnim.snapTo(s)
         offsetAnim.snapTo(targetOffset)
@@ -105,11 +110,14 @@ class GraphState<T>(
         var maxY = Float.MIN_VALUE
 
         _nodeStates.values.forEach { state ->
+            // Security guard: Skip nodes with non-finite coordinates to prevent NaN propagation
+            if (!state.position.isFiniteOffset()) return@forEach
             minX = minOf(minX, state.position.x)
             minY = minOf(minY, state.position.y)
             maxX = maxOf(maxX, state.position.x + state.size.width)
             maxY = maxOf(maxY, state.position.y + state.size.height)
         }
+        if (minX == Float.MAX_VALUE) return Rect(0f, 0f, 0f, 0f)
         return Rect(minX, minY, maxX, maxY)
     }
 
@@ -170,8 +178,11 @@ class GraphState<T>(
      * Updates the position of a node, respecting [snapGridSize] if enabled.
      */
     fun onNodeDragged(nodeId: String, delta: Offset) {
+        // Security guard: Ignore non-finite drag deltas to prevent corrupted node coordinates
+        if (!delta.isFiniteOffset()) return
         val current = _nodeStates[nodeId] ?: return
         var newPos = current.position + delta
+        if (!newPos.isFiniteOffset()) return
 
         if (snapGridSize > 0) {
             newPos = Offset(
@@ -264,11 +275,14 @@ class GraphState<T>(
      * Smoothly transitions scale and offset over time.
      */
     suspend fun animateTo(targetScale: Float, targetOffset: Offset, viewportWidth: Float = 0f, viewportHeight: Float = 0f) = coroutineScope {
+        // Security guard: Ignore non-finite camera parameters to protect Compose animation state
+        if (!targetScale.isFiniteNumber() || !targetOffset.isFiniteOffset()) return@coroutineScope
         val finalOffset = if (viewportWidth > 0 && viewportHeight > 0) {
             coerceOffset(targetOffset, viewportWidth, viewportHeight, targetScale)
         } else {
             targetOffset
         }
+        if (!finalOffset.isFiniteOffset()) return@coroutineScope
 
         launch {
             scaleAnim.animateTo(targetScale.coerceIn(0.1f, 5f), tween(500)) {
