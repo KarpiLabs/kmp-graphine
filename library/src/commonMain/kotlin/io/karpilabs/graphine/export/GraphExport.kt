@@ -153,8 +153,9 @@ object GraphExport {
 
     private fun nodeToSvg(node: ExportNode): String {
         val sb = StringBuilder()
+        val idAttr = escapeXml(node.id)
         sb.append(
-            "  <circle cx=\"${fmt(node.center.x)}\" cy=\"${fmt(node.center.y)}\" r=\"${fmt(node.radius)}\" " +
+            "  <circle id=\"$idAttr\" cx=\"${fmt(node.center.x)}\" cy=\"${fmt(node.center.y)}\" r=\"${fmt(node.radius)}\" " +
                 "fill=\"${node.color.toCssColor()}\"/>\n",
         )
         if (node.label.isNotEmpty()) {
@@ -174,15 +175,22 @@ object GraphExport {
 
     /**
      * Escapes XML entity characters and strips invalid XML 1.0 control characters
-     * to ensure generated SVG documents remain well-formed.
+     * in a single pass to ensure generated SVG documents remain well-formed and safe against injection.
      */
-    private fun escapeXml(text: String): String {
+    internal fun escapeXml(text: String): String {
         val sb = StringBuilder(text.length)
         var i = 0
         while (i < text.length) {
             val c = text[i]
             if (c == '\t' || c == '\n' || c == '\r' || (c in '\u0020'..'\uD7FF') || (c in '\uE000'..'\uFFFD')) {
-                sb.append(c)
+                when (c) {
+                    '&' -> sb.append("&amp;")
+                    '<' -> sb.append("&lt;")
+                    '>' -> sb.append("&gt;")
+                    '"' -> sb.append("&quot;")
+                    '\'' -> sb.append("&apos;")
+                    else -> sb.append(c)
+                }
                 i++
             } else if (c.isHighSurrogate() && i + 1 < text.length && text[i + 1].isLowSurrogate()) {
                 sb.append(c)
@@ -194,11 +202,6 @@ object GraphExport {
             }
         }
         return sb.toString()
-            .replace("&", "&amp;")
-            .replace("<", "&lt;")
-            .replace(">", "&gt;")
-            .replace("\"", "&quot;")
-            .replace("'", "&apos;")
     }
 }
 
