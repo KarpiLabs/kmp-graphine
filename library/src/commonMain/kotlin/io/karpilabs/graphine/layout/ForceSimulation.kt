@@ -138,6 +138,7 @@ class ForceSimulation<T>(
      * does not overwrite the drag with a stale simulated position.
      */
     fun setNodePosition(id: String, position: Offset) {
+        if (!position.x.isFinite() || !position.y.isFinite()) return
         val i = indexOf[id] ?: return
         x[i] = position.x
         y[i] = position.y

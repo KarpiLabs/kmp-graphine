@@ -480,6 +480,7 @@ class GraphState<T>(
      */
     fun setNodePositions(positions: Map<String, Offset>) {
         positions.forEach { (id, pos) ->
+            if (!pos.isFiniteOffset()) return@forEach
             val current = _nodeStates[id] ?: return@forEach
             if (current.position != pos) {
                 _nodeStates[id] = current.copy(position = pos)

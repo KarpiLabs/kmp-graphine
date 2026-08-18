@@ -144,4 +144,18 @@ class ForceSimulationTest {
             "Pinned node must stay fixed; was $pos",
         )
     }
+
+    @Test
+    fun testSetNodePositionIgnoresNonFinitePositions() {
+        val nodes = listOf(GraphNode("1", "A"))
+        val edges = emptyList<GraphEdge>()
+        val config = ForceSimulationConfig()
+        val initialPositions = mapOf("1" to Offset(10f, 20f))
+        val sim = ForceSimulation(nodes, edges, config, initialPositions)
+
+        sim.setNodePosition("1", Offset(Float.NaN, Float.POSITIVE_INFINITY))
+
+        val pos = sim.getPositions()["1"]!!
+        assertTrue(pos.x == 10f && pos.y == 20f, "Non-finite position should be ignored; was $pos")
+    }
 }
