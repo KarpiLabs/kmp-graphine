@@ -29,6 +29,9 @@ import kotlinx.coroutines.withContext
 import kotlin.math.min
 import kotlin.math.sqrt
 
+private fun Float.isFiniteNumber(): Boolean = !isNaN() && !isInfinite()
+private fun Offset.isFiniteOffset(): Boolean = x.isFiniteNumber() && y.isFiniteNumber()
+
 /**
  * Configuration for continuous force simulation.
  * Tunable via Center, Repel, and Link force parameters.
@@ -138,6 +141,8 @@ class ForceSimulation<T>(
      * does not overwrite the drag with a stale simulated position.
      */
     fun setNodePosition(id: String, position: Offset) {
+        // Security guard: Ignore non-finite position updates to prevent simulation state corruption
+        if (!position.isFiniteOffset()) return
         val i = indexOf[id] ?: return
         x[i] = position.x
         y[i] = position.y
@@ -215,14 +220,18 @@ class ForceSimulation<T>(
             val j = edgeTo[e]
             val dx = x[i] - x[j]
             val dy = y[i] - y[j]
-            val dist = sqrt(dx * dx + dy * dy).coerceAtLeast(1f)
+            val distSq = dx * dx + dy * dy
+            if (!distSq.isFiniteNumber()) continue
+            val dist = sqrt(distSq).coerceAtLeast(1f)
             val force = (dist - linkDist) * linkStr
             val mx = (dx / dist) * force
             val my = (dy / dist) * force
-            fx[i] -= mx
-            fy[i] -= my
-            fx[j] += mx
-            fy[j] += my
+            if (mx.isFiniteNumber() && my.isFiniteNumber()) {
+                fx[i] -= mx
+                fy[i] -= my
+                fx[j] += mx
+                fy[j] += my
+            }
         }
 
         // 3. Center pull + integrate (skip pinned nodes)
@@ -234,11 +243,14 @@ class ForceSimulation<T>(
                 continue
             }
 
-            fx[i] += (centerX - x[i]) * centerStr
-            fy[i] += (centerY - y[i]) * centerStr
+            val cFx = (centerX - x[i]) * centerStr
+            val cFy = (centerY - y[i]) * centerStr
 
-            var newVx = (vx[i] + fx[i]) * damping
-            var newVy = (vy[i] + fy[i]) * damping
+            val netFx = if (fx[i].isFiniteNumber() && cFx.isFiniteNumber()) fx[i] + cFx else 0f
+            val netFy = if (fy[i].isFiniteNumber() && cFy.isFiniteNumber()) fy[i] + cFy else 0f
+
+            var newVx = (vx[i] + netFx) * damping
+            var newVy = (vy[i] + netFy) * damping
 
             // Clamp velocity so a reheat cannot fling the whole graph.
             val speed = sqrt(newVx * newVx + newVy * newVy)
@@ -248,10 +260,20 @@ class ForceSimulation<T>(
                 newVy *= s
             }
 
-            vx[i] = newVx
-            vy[i] = newVy
-            x[i] += newVx
-            y[i] += newVy
+            if (newVx.isFiniteNumber() && newVy.isFiniteNumber()) {
+                vx[i] = newVx
+                vy[i] = newVy
+            } else {
+                vx[i] = 0f
+                vy[i] = 0f
+            }
+
+            val nextX = x[i] + vx[i]
+            val nextY = y[i] + vy[i]
+            if (nextX.isFiniteNumber() && nextY.isFiniteNumber()) {
+                x[i] = nextX
+                y[i] = nextY
+            }
         }
 
         // 4. Cool down
@@ -338,15 +360,17 @@ class ForceSimulation<T>(
         val dx = x[i] - x[j]
         val dy = y[i] - y[j]
         val distSq = dx * dx + dy * dy
-        if (distSq > repelMaxSq || distSq < 1e-8f) return
+        if (!distSq.isFiniteNumber() || distSq > repelMaxSq || distSq < 1e-8f) return
         val dist = sqrt(distSq).coerceAtLeast(1f)
         val force = (repel / (dist * dist))
         val mx = (dx / dist) * force
         val my = (dy / dist) * force
-        fx[i] += mx
-        fy[i] += my
-        fx[j] -= mx
-        fy[j] -= my
+        if (mx.isFiniteNumber() && my.isFiniteNumber()) {
+            fx[i] += mx
+            fy[i] += my
+            fx[j] -= mx
+            fy[j] -= my
+        }
     }
 
     /**
