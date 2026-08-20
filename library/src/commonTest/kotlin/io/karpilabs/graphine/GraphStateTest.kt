@@ -232,4 +232,17 @@ class GraphStateTest {
 
         assertEquals(Rect(0f, 0f, 0f, 0f), bounds)
     }
+
+    @Test
+    fun testNonFiniteSetNodePositionsIsIgnored() {
+        val node = GraphNode("1", "Data")
+        val state = GraphState(initialNodes = listOf(node))
+        state.setNodePositions(mapOf("1" to Offset(10f, 20f)))
+
+        state.setNodePositions(mapOf("1" to Offset(Float.NaN, 50f)))
+        assertEquals(Offset(10f, 20f), state.nodeStates["1"]?.position)
+
+        state.setNodePositions(mapOf("1" to Offset(100f, Float.POSITIVE_INFINITY)))
+        assertEquals(Offset(10f, 20f), state.nodeStates["1"]?.position)
+    }
 }
