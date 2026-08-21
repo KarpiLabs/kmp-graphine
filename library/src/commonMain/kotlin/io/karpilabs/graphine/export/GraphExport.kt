@@ -61,6 +61,10 @@ object GraphExport {
         }
 
         val rawPositions = visibleIds.associateWith { id -> state.nodeStates.getValue(id).position }
+            .filterValues { it.x.isFinite() && it.y.isFinite() }
+        if (rawPositions.isEmpty()) {
+            return GraphExportModel(padding * 2f, padding * 2f, backgroundColor, emptyList(), emptyList())
+        }
         val minX = rawPositions.values.minOf { it.x }
         val minY = rawPositions.values.minOf { it.y }
         val maxX = rawPositions.values.maxOf { it.x }

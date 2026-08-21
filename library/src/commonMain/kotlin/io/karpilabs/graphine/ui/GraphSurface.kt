@@ -654,7 +654,10 @@ private fun DrawScope.drawArrowhead(to: Offset, from: Offset, config: EdgeConfig
 }
 
 private fun DrawScope.drawGroupZone(group: GraphGroup, state: GraphState<*>) {
-    val nodePositions = group.nodeIds.filter { state.isNodeVisible(it) }.mapNotNull { state.nodeStates[it]?.position }
+    val nodePositions = group.nodeIds
+        .filter { state.isNodeVisible(it) }
+        .mapNotNull { state.nodeStates[it]?.position }
+        .filter { it.x.isFinite() && it.y.isFinite() }
     if (nodePositions.isEmpty()) return
 
     var minX = Float.MAX_VALUE
