@@ -66,15 +66,17 @@ class GraphExportTest {
     }
 
     @Test
-    fun testBuildModelEscapesNodeIds() {
-        val nodes = listOf(GraphNode("<node&1>", "Alpha"))
-        val state = GraphState(initialNodes = nodes)
+    fun testBuildModelPreservesRawNodeIdsAndMatchesEdgesWithSpecialCharacters() {
+        val nodes = listOf(GraphNode("<node&1>", "Alpha"), GraphNode("<node&2>", "Beta"))
+        val state = GraphState(initialNodes = nodes, initialEdges = listOf(GraphEdge("<node&1>", "<node&2>")))
         state.onNodeDragged("<node&1>", Offset(0f, 0f))
+        state.onNodeDragged("<node&2>", Offset(100f, 100f))
 
         val model = GraphExport.buildModel(state)
 
-        assertEquals(1, model.nodes.size)
-        assertEquals("&lt;node&amp;1&gt;", model.nodes[0].id)
+        assertEquals(2, model.nodes.size)
+        assertEquals(1, model.edges.size)
+        assertEquals("<node&1>", model.nodes[0].id)
     }
 
     @Test
