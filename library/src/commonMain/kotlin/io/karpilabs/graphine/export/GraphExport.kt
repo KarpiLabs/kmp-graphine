@@ -77,7 +77,7 @@ object GraphExport {
             val node = state.nodeStates.getValue(id).node
             val pos = rawPositions.getValue(id)
             ExportNode(
-                id = id,
+                id = escapeXml(id),
                 center = pos + shift,
                 radius = nodeRadius,
                 color = nodeColor(node),

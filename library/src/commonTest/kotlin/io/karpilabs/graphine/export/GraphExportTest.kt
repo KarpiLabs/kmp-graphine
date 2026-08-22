@@ -66,6 +66,18 @@ class GraphExportTest {
     }
 
     @Test
+    fun testBuildModelEscapesNodeIds() {
+        val nodes = listOf(GraphNode("<node&1>", "Alpha"))
+        val state = GraphState(initialNodes = nodes)
+        state.onNodeDragged("<node&1>", Offset(0f, 0f))
+
+        val model = GraphExport.buildModel(state)
+
+        assertEquals(1, model.nodes.size)
+        assertEquals("&lt;node&amp;1&gt;", model.nodes[0].id)
+    }
+
+    @Test
     fun testToSvgEscapesLabelContent() {
         val nodes = listOf(GraphNode("1", "<script>&\"'"))
         val state = GraphState(initialNodes = nodes)
