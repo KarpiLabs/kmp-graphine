@@ -55,7 +55,8 @@ private fun HelloWeb() {
     }
 }
 
-// Initialize immediately when module loads
-renderComposable(rootElementId = "root") {
-    HelloWeb()
+fun main() {
+    renderComposable(rootElementId = "root") {
+        HelloWeb()
+    }
 }

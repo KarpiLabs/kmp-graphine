@@ -61,11 +61,16 @@ fun Minimap(
             var maxX = Float.MIN_VALUE
             var maxY = Float.MIN_VALUE
 
-            state.nodeStates.values.forEach {
-                minX = minOf(minX, it.position.x)
-                minY = minOf(minY, it.position.y)
-                maxX = maxOf(maxX, it.position.x)
-                maxY = maxOf(maxY, it.position.y)
+            val validPositions = state.nodeStates.values
+                .map { it.position }
+                .filter { it.x.isFinite() && it.y.isFinite() }
+            if (validPositions.isEmpty()) return@Canvas
+
+            validPositions.forEach { pos ->
+                minX = minOf(minX, pos.x)
+                minY = minOf(minY, pos.y)
+                maxX = maxOf(maxX, pos.x)
+                maxY = maxOf(maxY, pos.y)
             }
 
             val padding = 100f

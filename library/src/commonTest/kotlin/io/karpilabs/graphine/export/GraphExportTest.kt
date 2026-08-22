@@ -109,4 +109,27 @@ class GraphExportTest {
         assertTrue(model.edges.isEmpty())
         assertEquals(1, model.nodes.size)
     }
+
+    @Test
+    fun testBuildModelIgnoresNonFiniteNodePositions() {
+        val nodes = listOf(GraphNode("1", "Alpha"), GraphNode("2", "Corrupt"))
+        val state = GraphState(initialNodes = nodes)
+        state.setNodePositions(
+            mapOf(
+                "1" to Offset(100f, 100f),
+                "2" to Offset(Float.NaN, Float.POSITIVE_INFINITY),
+            ),
+        )
+
+        val model = GraphExport.buildModel(state)
+
+        assertTrue(model.width.isFinite() && model.height.isFinite())
+        assertTrue(model.width > 0f && model.height > 0f)
+        assertEquals(1, model.nodes.size)
+        assertEquals("1", model.nodes[0].id)
+
+        val svg = GraphExport.toSvg(state)
+        assertTrue(!svg.contains("NaN"))
+        assertTrue(!svg.contains("Infinity"))
+    }
 }
