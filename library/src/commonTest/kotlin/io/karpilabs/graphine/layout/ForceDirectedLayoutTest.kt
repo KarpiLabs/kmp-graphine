@@ -51,4 +51,21 @@ class ForceDirectedLayoutTest {
         assertNotEquals(pos2, pos3)
         assertNotEquals(pos1, pos3)
     }
+
+    @Test
+    fun testForceDirectedLayoutDanglingEdgesHandledSafely() {
+        val nodes = listOf(GraphNode("1", "Node 1"))
+        val edges = listOf(
+            GraphEdge("1", "non_existent"),
+            GraphEdge("non_existent", "1"),
+            GraphEdge("foo", "bar"),
+        )
+
+        val layout = ForceDirectedLayout(iterations = 5)
+        val positions = layout.calculatePositions(nodes, edges, 500f, 500f)
+
+        assertEquals(1, positions.size)
+        val pos = positions["1"]!!
+        kotlin.test.assertTrue(pos.x.isFinite() && pos.y.isFinite())
+    }
 }
