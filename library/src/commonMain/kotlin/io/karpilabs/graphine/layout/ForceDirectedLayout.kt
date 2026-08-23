@@ -60,15 +60,21 @@ class ForceDirectedLayout(
 
             // 1. Repulsion between all pairs
             for (i in nodes.indices) {
-                for (j in i + 1 until nodes.indices.last + 1) {
+                for (j in i + 1 until nodes.size) {
                     val u = nodes[i].id
                     val v = nodes[j].id
-                    val delta = positions[u]!! - positions[v]!!
+                    val posU = positions[u] ?: continue
+                    val posV = positions[v] ?: continue
+                    val dispU = displacements[u] ?: continue
+                    val dispV = displacements[v] ?: continue
+                    val delta = posU - posV
                     val distance = delta.getDistance().coerceAtLeast(1f)
+                    if (!distance.isFinite()) continue
                     val force = repulsionStrength / (distance * distance)
                     val move = (delta / distance) * force
-                    displacements[u] = displacements[u]!! + move
-                    displacements[v] = displacements[v]!! - move
+                    if (!move.x.isFinite() || !move.y.isFinite()) continue
+                    displacements[u] = dispU + move
+                    displacements[v] = dispV - move
                 }
             }
 
@@ -76,17 +82,28 @@ class ForceDirectedLayout(
             edges.forEach { edge ->
                 val u = edge.from
                 val v = edge.to
-                val delta = positions[u]!! - positions[v]!!
+                val posU = positions[u] ?: return@forEach
+                val posV = positions[v] ?: return@forEach
+                val dispU = displacements[u] ?: return@forEach
+                val dispV = displacements[v] ?: return@forEach
+                val delta = posU - posV
                 val distance = delta.getDistance().coerceAtLeast(1f)
+                if (!distance.isFinite()) return@forEach
                 val force = (distance - k) * springStrength
                 val move = (delta / distance) * force
-                displacements[u] = displacements[u]!! - move
-                displacements[v] = displacements[v]!! + move
+                if (!move.x.isFinite() || !move.y.isFinite()) return@forEach
+                displacements[u] = dispU - move
+                displacements[v] = dispV + move
             }
 
             // 3. Apply displacements
             nodes.forEach { node ->
-                positions[node.id] = positions[node.id]!! + displacements[node.id]!!
+                val pos = positions[node.id] ?: return@forEach
+                val disp = displacements[node.id] ?: return@forEach
+                val newPos = pos + disp
+                if (newPos.x.isFinite() && newPos.y.isFinite()) {
+                    positions[node.id] = newPos
+                }
             }
         }
 
