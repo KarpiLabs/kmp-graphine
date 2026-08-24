@@ -32,6 +32,9 @@ class TreeLayout(
     private val mode: TreeLayoutMode = TreeLayoutMode.STRAIGHT,
 ) : GraphLayout {
 
+    private val safeHSpacing = if (horizontalSpacing.isFinite() && horizontalSpacing > 0f) horizontalSpacing else 450f
+    private val safeVSpacing = if (verticalSpacing.isFinite() && verticalSpacing > 0f) verticalSpacing else 550f
+
     override fun <T> calculatePositions(
         nodes: List<GraphNode<T>>,
         edges: List<GraphEdge>,
@@ -90,8 +93,6 @@ class TreeLayout(
             ceil(sqrt(children.size.toDouble())).toInt().coerceAtLeast(3)
         }
 
-        val safeHSpacing = if (horizontalSpacing.isFinite() && horizontalSpacing > 0f) horizontalSpacing else 450f
-        val safeVSpacing = if (verticalSpacing.isFinite() && verticalSpacing > 0f) verticalSpacing else 550f
         val currentHSpacing = safeHSpacing * (1f / (depth * 0.1f + 1f)).coerceAtLeast(0.7f)
         val currentVSpacing = safeVSpacing
 
@@ -128,7 +129,6 @@ class TreeLayout(
     ) {
         // Radial strategy: Spread nodes along an arc below the parent
         // As rows increase, radius increases and more nodes fit.
-        val safeVSpacing = if (verticalSpacing.isFinite() && verticalSpacing > 0f) verticalSpacing else 550f
         val baseRadius = safeVSpacing
         val nodesPerArc = 5 + (depth * 2) // Outer arcs can hold more nodes
 
