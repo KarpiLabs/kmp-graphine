@@ -32,19 +32,23 @@ class TreeLayout(
     private val mode: TreeLayoutMode = TreeLayoutMode.STRAIGHT,
 ) : GraphLayout {
 
+    private val safeHSpacing = if (horizontalSpacing.isFinite() && horizontalSpacing > 0f) horizontalSpacing else 450f
+    private val safeVSpacing = if (verticalSpacing.isFinite() && verticalSpacing > 0f) verticalSpacing else 550f
+
     override fun <T> calculatePositions(
         nodes: List<GraphNode<T>>,
         edges: List<GraphEdge>,
         viewportWidth: Float,
         viewportHeight: Float,
     ): Map<String, Offset> {
+        val safeViewportWidth = if (viewportWidth.isFinite() && viewportWidth > 0f) viewportWidth else 1000f
         val positions = mutableMapOf<String, Offset>()
         val adjacency = edges.groupBy({ it.from }, { it.to })
         val roots = nodes.filter { node -> edges.none { it.to == node.id } }
         val startNodes = if (roots.isNotEmpty()) roots else listOf(nodes.firstOrNull() ?: return emptyMap())
 
         startNodes.forEachIndexed { index, root ->
-            val startX = (viewportWidth / (startNodes.size + 1)) * (index + 1)
+            val startX = (safeViewportWidth / (startNodes.size + 1)) * (index + 1)
             layoutNode(root.id, startX, 100f, adjacency, positions, 0)
         }
         return positions
@@ -59,7 +63,9 @@ class TreeLayout(
         depth: Int,
     ) {
         if (pos.containsKey(id)) return
-        pos[id] = Offset(x, y)
+        val safeX = if (x.isFinite()) x else 0f
+        val safeY = if (y.isFinite()) y else 0f
+        pos[id] = Offset(safeX, safeY)
 
         val children = adj[id] ?: return
         if (children.isEmpty()) return
@@ -87,8 +93,8 @@ class TreeLayout(
             ceil(sqrt(children.size.toDouble())).toInt().coerceAtLeast(3)
         }
 
-        val currentHSpacing = horizontalSpacing * (1f / (depth * 0.1f + 1f)).coerceAtLeast(0.7f)
-        val currentVSpacing = verticalSpacing
+        val currentHSpacing = safeHSpacing * (1f / (depth * 0.1f + 1f)).coerceAtLeast(0.7f)
+        val currentVSpacing = safeVSpacing
 
         if (children.size > maxPerRow) {
             val gridYStart = y + currentVSpacing
@@ -123,11 +129,11 @@ class TreeLayout(
     ) {
         // Radial strategy: Spread nodes along an arc below the parent
         // As rows increase, radius increases and more nodes fit.
-        val baseRadius = verticalSpacing
+        val baseRadius = safeVSpacing
         val nodesPerArc = 5 + (depth * 2) // Outer arcs can hold more nodes
 
         children.chunked(nodesPerArc).forEachIndexed { arcIndex, arcChildren ->
-            val radius = baseRadius + (arcIndex * verticalSpacing * 0.6f)
+            val radius = baseRadius + (arcIndex * safeVSpacing * 0.6f)
             val angleRange = PI * 0.8 // 144 degree arc centered downwards
             val startAngle = (PI - angleRange) / 2 + PI // Start angle to point down
 

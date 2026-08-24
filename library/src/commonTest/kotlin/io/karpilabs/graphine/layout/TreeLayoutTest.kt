@@ -91,4 +91,26 @@ class TreeLayoutTest {
         assertTrue(positions.containsKey("r2"))
         assertEquals(positions["r1"]?.y, positions["r2"]?.y)
     }
+
+    @Test
+    fun testNonFiniteInputsHandledSafely() {
+        val nodes =
+            listOf(
+                GraphNode("root", "Root"),
+                GraphNode("child1", "Child 1"),
+            )
+        val edges = listOf(GraphEdge("root", "child1"))
+
+        // Non-finite viewport width falls back to safe dimensions without dropping nodes
+        val layoutNan = TreeLayout()
+        val posNan = layoutNan.calculatePositions(nodes, edges, Float.NaN, 1000f)
+        assertEquals(2, posNan.size)
+        assertTrue(posNan.values.all { it.x.isFinite() && it.y.isFinite() })
+
+        // Non-finite spacing falls back to safe defaults without dropping nodes
+        val layoutInf = TreeLayout(horizontalSpacing = Float.POSITIVE_INFINITY, verticalSpacing = Float.NaN)
+        val posInf = layoutInf.calculatePositions(nodes, edges, 1000f, 1000f)
+        assertEquals(2, posInf.size)
+        assertTrue(posInf.values.all { it.x.isFinite() && it.y.isFinite() })
+    }
 }
