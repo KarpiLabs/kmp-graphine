@@ -78,4 +78,23 @@ class DotStyleTest {
         assertEquals(Color.Red, style.color(node, 5))
         assertEquals(Color.Blue, style.color(node, 2))
     }
+
+    @Test
+    fun testRadiusComputationNegativeDegreeAndInvalidParameters() {
+        val styleNegativeDegree = DotStyle<String>(baseRadius = 4f, radiusPerDegree = 0.5f, maxRadius = 12f)
+        assertEquals(4f, styleNegativeDegree.computeRadius(-5))
+
+        val styleNaN = DotStyle<String>(baseRadius = Float.NaN, radiusPerDegree = Float.NaN, maxRadius = Float.NaN)
+        assertEquals(4f, styleNaN.computeRadius(10))
+
+        val styleInfinity = DotStyle<String>(
+            baseRadius = Float.POSITIVE_INFINITY,
+            radiusPerDegree = Float.POSITIVE_INFINITY,
+            maxRadius = Float.POSITIVE_INFINITY,
+        )
+        assertEquals(4f, styleInfinity.computeRadius(10))
+
+        val styleNegativeBase = DotStyle<String>(baseRadius = -10f, radiusPerDegree = -2f, maxRadius = -5f)
+        assertEquals(4f, styleNegativeBase.computeRadius(10))
+    }
 }
