@@ -44,7 +44,14 @@ data class DotStyle<T>(
      * Computes the radius for a dot given its degree.
      *
      * @param degree The node's degree (connection count).
-     * @return The radius, clamped to [maxRadius].
+     * @return The radius, clamped to [maxRadius] and guarded against non-finite or negative values.
      */
-    fun computeRadius(degree: Int): Float = (baseRadius + degree * radiusPerDegree).coerceAtMost(maxRadius)
+    fun computeRadius(degree: Int): Float {
+        val safeDegree = degree.coerceAtLeast(0)
+        val safeBase = if (baseRadius.isFinite() && baseRadius >= 0f) baseRadius else 4f
+        val safeStep = if (radiusPerDegree.isFinite() && radiusPerDegree >= 0f) radiusPerDegree else 0f
+        val safeMax = if (maxRadius.isFinite() && maxRadius >= safeBase) maxRadius else safeBase
+        val rawRadius = safeBase + safeDegree * safeStep
+        return if (rawRadius.isFinite()) rawRadius.coerceAtMost(safeMax).coerceAtLeast(0f) else safeMax
+    }
 }
