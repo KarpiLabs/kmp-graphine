@@ -144,4 +144,42 @@ class ForceSimulationTest {
             "Pinned node must stay fixed; was $pos",
         )
     }
+
+    @Test
+    fun testSetNodePositionIgnoresNonFiniteOffsets() {
+        val nodes = listOf(GraphNode("1", "A"))
+        val edges = emptyList<GraphEdge>()
+        val initialPositions = mapOf("1" to Offset(10f, 20f))
+        val sim = ForceSimulation(nodes, edges, ForceSimulationConfig(), initialPositions)
+
+        sim.setNodePosition("1", Offset(Float.NaN, 50f))
+        val pos1 = sim.getPositions()["1"]!!
+        assertTrue(pos1.x == 10f && pos1.y == 20f, "Position should be unchanged after NaN setNodePosition")
+
+        sim.setNodePosition("1", Offset(100f, Float.POSITIVE_INFINITY))
+        val pos2 = sim.getPositions()["1"]!!
+        assertTrue(pos2.x == 10f && pos2.y == 20f, "Position should be unchanged after Infinity setNodePosition")
+    }
+
+    @Test
+    fun testTickHandlesNonFiniteCalculationsGracefully() {
+        val nodes = listOf(
+            GraphNode("1", "A"),
+            GraphNode("2", "B"),
+        )
+        val edges = listOf(GraphEdge("1", "2"))
+        val initialPositions = mapOf(
+            "1" to Offset(0f, 0f),
+            "2" to Offset(100f, 0f),
+        )
+        val sim = ForceSimulation(nodes, edges, ForceSimulationConfig(), initialPositions)
+
+        repeat(10) { sim.tick(500f, 500f) }
+
+        val positions = sim.getPositions()
+        for ((_, pos) in positions) {
+            assertTrue(!pos.x.isNaN() && !pos.x.isInfinite(), "x coordinate must be finite")
+            assertTrue(!pos.y.isNaN() && !pos.y.isInfinite(), "y coordinate must be finite")
+        }
+    }
 }
