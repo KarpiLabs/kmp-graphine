@@ -7,3 +7,8 @@
 **Vulnerability:** `ForceDirectedLayout` used non-null assertions (`!!`) on positions and displacements during repulsion and spring attraction iterations. Dangling edges referencing missing node IDs caused `NullPointerException` crashes, and zero-distance nodes produced `NaN` displacements that corrupted all layout coordinates.
 **Learning:** Graph layout algorithms processing external/dynamic graph edge inputs must never assume all edge endpoints exist in the node set or that distances are non-zero/finite.
 **Prevention:** Always use safe null checks (`?: continue`) and `.isFinite()` guards on distance and displacement vectors before updating node layout positions.
+
+## 2026-03-31 - Unbounded Scale and Non-Finite Floating Point Operations in Image Export
+**Vulnerability:** `GraphExport.buildModel` and `GraphExportModel.toPngBytes` accepted non-finite (`NaN`, `Infinity`), negative, or arbitrarily large `scale`, `nodeRadius`, and `padding` parameters, which could cause massive bitmap allocations (`BufferedImage`), leading to JVM `OutOfMemoryError` DoS crashes or invalid graphics transform states.
+**Learning:** Multiplying canvas width/height by unchecked float scale factors when instantiating raw Bitmaps/BufferedImages can overflow integer bounds or trigger multi-gigabyte memory allocations.
+**Prevention:** Always validate scale and dimension parameters with `.isFinite() && > 0f` guards and coerce bitmap pixel dimensions to safe maximum limits (e.g., 8192px).

@@ -146,4 +146,18 @@ class GraphExportTest {
         assertTrue(!svg.contains("NaN"))
         assertTrue(!svg.contains("Infinity"))
     }
+
+    @Test
+    fun testBuildModelSanitizesNonFiniteAndInvalidParameters() {
+        val state = sampleState()
+        val model = GraphExport.buildModel(
+            state = state,
+            nodeRadius = Float.NaN,
+            padding = -50f,
+        )
+
+        assertTrue(model.width.isFinite() && model.width > 0f)
+        assertTrue(model.height.isFinite() && model.height > 0f)
+        assertTrue(model.nodes.all { it.radius > 0f && it.radius.isFinite() })
+    }
 }

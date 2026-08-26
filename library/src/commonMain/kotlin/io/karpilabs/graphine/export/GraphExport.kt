@@ -55,23 +55,25 @@ object GraphExport {
         nodeColor: (GraphNode<T>) -> Color = { DEFAULT_NODE_COLOR },
         nodeLabel: (GraphNode<T>) -> String = { it.id },
     ): GraphExportModel {
+        val safeNodeRadius = if (nodeRadius.isFinite() && nodeRadius > 0f) nodeRadius else 24f
+        val safePadding = if (padding.isFinite() && padding >= 0f) padding else 40f
         val visibleIds = state.getVisibleNodes().map { it.id }
         if (visibleIds.isEmpty()) {
-            return GraphExportModel(padding * 2f, padding * 2f, backgroundColor, emptyList(), emptyList())
+            return GraphExportModel(safePadding * 2f, safePadding * 2f, backgroundColor, emptyList(), emptyList())
         }
 
         val rawPositions = visibleIds.associateWith { id -> state.nodeStates.getValue(id).position }
             .filterValues { it.x.isFinite() && it.y.isFinite() }
         if (rawPositions.isEmpty()) {
-            return GraphExportModel(padding * 2f, padding * 2f, backgroundColor, emptyList(), emptyList())
+            return GraphExportModel(safePadding * 2f, safePadding * 2f, backgroundColor, emptyList(), emptyList())
         }
         val minX = rawPositions.values.minOf { it.x }
         val minY = rawPositions.values.minOf { it.y }
         val maxX = rawPositions.values.maxOf { it.x }
         val maxY = rawPositions.values.maxOf { it.y }
-        val shift = Offset(padding - minX, padding - minY)
-        val width = (maxX - minX) + padding * 2f
-        val height = (maxY - minY) + padding * 2f
+        val shift = Offset(safePadding - minX, safePadding - minY)
+        val width = (maxX - minX) + safePadding * 2f
+        val height = (maxY - minY) + safePadding * 2f
 
         val nodes = visibleIds.map { id ->
             val node = state.nodeStates.getValue(id).node
@@ -79,7 +81,7 @@ object GraphExport {
             ExportNode(
                 id = id,
                 center = pos + shift,
-                radius = nodeRadius,
+                radius = safeNodeRadius,
                 color = nodeColor(node),
                 label = nodeLabel(node),
             )
