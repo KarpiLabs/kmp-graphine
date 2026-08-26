@@ -39,17 +39,21 @@ import java.awt.Color as AwtColor
  * @param scale Supersampling factor applied before encoding (e.g. 2f for a sharper export).
  */
 fun GraphExportModel.toPngBytes(scale: Float = 2f): ByteArray {
-    val pixelWidth = (width * scale).toInt().coerceAtLeast(1)
-    val pixelHeight = (height * scale).toInt().coerceAtLeast(1)
+    val safeScale = if (scale.isFinite() && scale > 0f) scale.coerceIn(0.1f, 10f) else 2f
+    val safeWidth = if (width.isFinite() && width > 0f) width else 1f
+    val safeHeight = if (height.isFinite() && height > 0f) height else 1f
+    val maxDimension = 8192
+    val pixelWidth = (safeWidth * safeScale).toInt().coerceIn(1, maxDimension)
+    val pixelHeight = (safeHeight * safeScale).toInt().coerceIn(1, maxDimension)
     val image = BufferedImage(pixelWidth, pixelHeight, BufferedImage.TYPE_INT_ARGB)
     val g = image.createGraphics()
     try {
         g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
         g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON)
-        g.scale(scale.toDouble(), scale.toDouble())
+        g.scale(safeScale.toDouble(), safeScale.toDouble())
 
         g.color = AwtColor(backgroundColor.toArgb(), true)
-        g.fillRect(0, 0, width.toInt() + 1, height.toInt() + 1)
+        g.fillRect(0, 0, safeWidth.toInt() + 1, safeHeight.toInt() + 1)
 
         edges.forEach { edge ->
             if (edge.points.size < 2) return@forEach
