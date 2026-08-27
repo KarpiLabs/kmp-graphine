@@ -93,4 +93,35 @@ class EdgeRoutingTest {
 
         assertNull(findObstacleBow(from, to, "a", "b", nodeRects))
     }
+
+    @Test
+    fun testClipToRectBoundaryHandlesNonFiniteValues() {
+        val validCenter = Offset(50f, 30f)
+        val validTarget = Offset(500f, 30f)
+        val validRect = Rect(0f, 0f, 100f, 60f)
+
+        // Non-finite center should return Offset.Zero
+        val nanCenterResult = clipToRectBoundary(Offset(Float.NaN, 30f), validTarget, validRect)
+        assertEquals(Offset.Zero, nanCenterResult)
+
+        // Non-finite target should return center unchanged
+        val nanTargetResult = clipToRectBoundary(validCenter, Offset(500f, Float.NaN), validRect)
+        assertEquals(validCenter, nanTargetResult)
+
+        // Non-finite rect should return center unchanged
+        val nanRect = Rect(0f, 0f, Float.NaN, 60f)
+        val nanRectResult = clipToRectBoundary(validCenter, validTarget, nanRect)
+        assertEquals(validCenter, nanRectResult)
+
+        // Infinity rect should return center unchanged
+        val infRect = Rect(0f, 0f, Float.POSITIVE_INFINITY, 60f)
+        val infRectResult = clipToRectBoundary(validCenter, validTarget, infRect)
+        assertEquals(validCenter, infRectResult)
+    }
+
+    @Test
+    fun testPortAnchorHandlesNonFiniteRect() {
+        val nanRect = Rect(0f, 0f, Float.NaN, 60f)
+        assertEquals(Offset.Zero, portAnchor(nanRect, NodePort.TOP))
+    }
 }

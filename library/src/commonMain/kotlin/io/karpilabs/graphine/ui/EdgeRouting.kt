@@ -21,12 +21,24 @@ import androidx.compose.ui.geometry.Rect
 import io.karpilabs.graphine.model.NodePort
 import kotlin.math.abs
 
+private fun Float.isFiniteNumber(): Boolean = !isNaN() && !isInfinite()
+private fun Offset.isFiniteOffset(): Boolean = x.isFiniteNumber() && y.isFiniteNumber()
+
 /** The point on [rect]'s boundary corresponding to a fixed [NodePort] side. */
-internal fun portAnchor(rect: Rect, port: NodePort): Offset = when (port) {
-    NodePort.TOP -> Offset(rect.center.x, rect.top)
-    NodePort.BOTTOM -> Offset(rect.center.x, rect.bottom)
-    NodePort.LEFT -> Offset(rect.left, rect.center.y)
-    NodePort.RIGHT -> Offset(rect.right, rect.center.y)
+internal fun portAnchor(rect: Rect, port: NodePort): Offset {
+    if (!rect.left.isFiniteNumber() ||
+        !rect.top.isFiniteNumber() ||
+        !rect.right.isFiniteNumber() ||
+        !rect.bottom.isFiniteNumber()
+    ) {
+        return Offset.Zero
+    }
+    return when (port) {
+        NodePort.TOP -> Offset(rect.center.x, rect.top)
+        NodePort.BOTTOM -> Offset(rect.center.x, rect.bottom)
+        NodePort.LEFT -> Offset(rect.left, rect.center.y)
+        NodePort.RIGHT -> Offset(rect.right, rect.center.y)
+    }
 }
 
 /**
@@ -35,10 +47,20 @@ internal fun portAnchor(rect: Rect, port: NodePort): Offset = when (port) {
  * Returns [center] unchanged if [rect] has no area (e.g. an unmeasured DOT-mode node).
  */
 internal fun clipToRectBoundary(center: Offset, target: Offset, rect: Rect): Offset {
-    if (rect.width <= 0f || rect.height <= 0f) return center
+    // Security guard: Validate finite offsets and rect dimensions to prevent NaN propagation to UI canvas
+    if (!center.isFiniteOffset()) return Offset.Zero
+    if (!target.isFiniteOffset() ||
+        !rect.width.isFiniteNumber() ||
+        !rect.height.isFiniteNumber() ||
+        rect.width <= 0f ||
+        rect.height <= 0f
+    ) {
+        return center
+    }
+
     val dx = target.x - center.x
     val dy = target.y - center.y
-    if (dx == 0f && dy == 0f) return center
+    if (!dx.isFiniteNumber() || !dy.isFiniteNumber() || (dx == 0f && dy == 0f)) return center
 
     val halfW = rect.width / 2f
     val halfH = rect.height / 2f
@@ -46,7 +68,9 @@ internal fun clipToRectBoundary(center: Offset, target: Offset, rect: Rect): Off
     val scaleY = if (dy != 0f) halfH / abs(dy) else Float.MAX_VALUE
     val scale = minOf(scaleX, scaleY, 1f)
 
-    return Offset(center.x + dx * scale, center.y + dy * scale)
+    if (!scale.isFiniteNumber()) return center
+    val result = Offset(center.x + dx * scale, center.y + dy * scale)
+    return if (result.isFiniteOffset()) result else center
 }
 
 /**
