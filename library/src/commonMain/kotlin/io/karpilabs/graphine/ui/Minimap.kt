@@ -80,36 +80,50 @@ fun Minimap(
             val scaleX = size.width / graphWidth
             val scaleY = size.height / graphHeight
             val scale = minOf(scaleX, scaleY)
+            if (!scale.isFinite() || scale <= 0f) return@Canvas
 
             val drawOffset = Offset(
                 (size.width - graphWidth * scale) / 2,
                 (size.height - graphHeight * scale) / 2,
             )
+            if (!drawOffset.x.isFinite() || !drawOffset.y.isFinite()) return@Canvas
 
             // 2. Draw Nodes as tiny dots
             state.nodeStates.values.forEach { node ->
-                val x = (node.position.x - minX + padding) * scale + drawOffset.x
-                val y = (node.position.y - minY + padding) * scale + drawOffset.y
-                drawCircle(
-                    color = Color.Gray.copy(alpha = 0.5f),
-                    radius = 2f,
-                    center = Offset(x, y),
-                )
+                val pos = node.position
+                if (!pos.x.isFinite() || !pos.y.isFinite()) return@forEach
+                val x = (pos.x - minX + padding) * scale + drawOffset.x
+                val y = (pos.y - minY + padding) * scale + drawOffset.y
+                if (x.isFinite() && y.isFinite()) {
+                    drawCircle(
+                        color = Color.Gray.copy(alpha = 0.5f),
+                        radius = 2f,
+                        center = Offset(x, y),
+                    )
+                }
             }
 
             // 3. Draw Viewport Rectangle
-            val viewLeft = (-state.offset.x / state.scale - minX + padding) * scale + drawOffset.x
-            val viewTop = (-state.offset.y / state.scale - minY + padding) * scale + drawOffset.y
-            val viewWidth = (viewportWidth / state.scale) * scale
-            val viewHeight = (viewportHeight / state.scale) * scale
+            val safeStateScale = if (state.scale.isFinite() && state.scale > 0f) state.scale else 1f
+            val safeOffsetX = if (state.offset.x.isFinite()) state.offset.x else 0f
+            val safeOffsetY = if (state.offset.y.isFinite()) state.offset.y else 0f
+            val safeVpWidth = if (viewportWidth.isFinite() && viewportWidth >= 0f) viewportWidth else 0f
+            val safeVpHeight = if (viewportHeight.isFinite() && viewportHeight >= 0f) viewportHeight else 0f
 
-            drawRoundRect(
-                color = Color.Blue.copy(alpha = 0.4f),
-                topLeft = Offset(viewLeft, viewTop),
-                size = Size(viewWidth, viewHeight),
-                cornerRadius = CornerRadius(2f),
-                style = Stroke(width = 1f),
-            )
+            val viewLeft = (-safeOffsetX / safeStateScale - minX + padding) * scale + drawOffset.x
+            val viewTop = (-safeOffsetY / safeStateScale - minY + padding) * scale + drawOffset.y
+            val viewWidth = (safeVpWidth / safeStateScale) * scale
+            val viewHeight = (safeVpHeight / safeStateScale) * scale
+
+            if (viewLeft.isFinite() && viewTop.isFinite() && viewWidth.isFinite() && viewHeight.isFinite() && viewWidth >= 0f && viewHeight >= 0f) {
+                drawRoundRect(
+                    color = Color.Blue.copy(alpha = 0.4f),
+                    topLeft = Offset(viewLeft, viewTop),
+                    size = Size(viewWidth, viewHeight),
+                    cornerRadius = CornerRadius(2f),
+                    style = Stroke(width = 1f),
+                )
+            }
         }
     }
 }
