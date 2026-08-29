@@ -36,29 +36,59 @@ fun GraphBackground(
     gridSize: Float = 60f,
 ) {
     Canvas(modifier = Modifier.fillMaxSize()) {
-        val scaledGridSize = gridSize * state.scale
+        val points = computeGridPoints(
+            gridSize = gridSize,
+            scale = state.scale,
+            offsetX = state.offset.x,
+            offsetY = state.offset.y,
+            canvasWidth = size.width,
+            canvasHeight = size.height,
+        )
+        if (points.isEmpty()) return@Canvas
 
-        // We only want to draw dots that are visible on screen
-        val startX = state.offset.x % scaledGridSize
-        val startY = state.offset.y % scaledGridSize
-
-        val points = mutableListOf<Offset>()
-
-        var x = startX
-        while (x < size.width + scaledGridSize) {
-            var y = startY
-            while (y < size.height + scaledGridSize) {
-                points.add(Offset(x, y))
-                y += scaledGridSize
-            }
-            x += scaledGridSize
-        }
-
+        val safeScale = if (state.scale.isFinite()) state.scale.coerceIn(0.5f, 2.0f) else 1.0f
         drawPoints(
             points = points,
             pointMode = PointMode.Points,
             color = dotColor,
-            strokeWidth = 2f * state.scale.coerceIn(0.5f, 2.0f),
+            strokeWidth = 2f * safeScale,
         )
     }
+}
+
+/**
+ * Computes dot grid offsets for canvas rendering with validation guards against non-finite
+ * or near-zero inputs to prevent infinite loop UI thread freezes or memory exhaustion DoS.
+ */
+internal fun computeGridPoints(
+    gridSize: Float,
+    scale: Float,
+    offsetX: Float,
+    offsetY: Float,
+    canvasWidth: Float,
+    canvasHeight: Float,
+): List<Offset> {
+    if (!gridSize.isFinite() || gridSize <= 0f || !scale.isFinite() || scale <= 0f) return emptyList()
+    if (!offsetX.isFinite() || !offsetY.isFinite() || !canvasWidth.isFinite() || !canvasHeight.isFinite()) return emptyList()
+
+    val rawScaledGrid = gridSize * scale
+    if (!rawScaledGrid.isFinite() || rawScaledGrid <= 0f) return emptyList()
+
+    // Minimum grid size threshold of 10f to prevent DoS via CPU/memory exhaustion from near-zero step sizes
+    val scaledGridSize = maxOf(10f, rawScaledGrid)
+
+    val startX = offsetX % scaledGridSize
+    val startY = offsetY % scaledGridSize
+
+    val points = mutableListOf<Offset>()
+    var x = startX
+    while (x < canvasWidth + scaledGridSize) {
+        var y = startY
+        while (y < canvasHeight + scaledGridSize) {
+            points.add(Offset(x, y))
+            y += scaledGridSize
+        }
+        x += scaledGridSize
+    }
+    return points
 }
