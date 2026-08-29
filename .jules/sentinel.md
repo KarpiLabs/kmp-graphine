@@ -12,3 +12,8 @@
 **Vulnerability:** `GraphExport.buildModel` and `GraphExportModel.toPngBytes` accepted non-finite (`NaN`, `Infinity`), negative, or arbitrarily large `scale`, `nodeRadius`, and `padding` parameters, which could cause massive bitmap allocations (`BufferedImage`), leading to JVM `OutOfMemoryError` DoS crashes or invalid graphics transform states.
 **Learning:** Multiplying canvas width/height by unchecked float scale factors when instantiating raw Bitmaps/BufferedImages can overflow integer bounds or trigger multi-gigabyte memory allocations.
 **Prevention:** Always validate scale and dimension parameters with `.isFinite() && > 0f` guards and coerce bitmap pixel dimensions to safe maximum limits (e.g., 8192px).
+
+## 2026-03-31 - Infinite Loops and Memory Exhaustion in Canvas Grid Generation
+**Vulnerability:** `GraphBackground` calculated `scaledGridSize = gridSize * state.scale` without validation. If `gridSize` or `scale` was 0, negative, `NaN`, or near-zero, `while (x < canvasWidth + scaledGridSize)` resulted in infinite loops (`x += 0`) that froze the UI composition thread or generated millions of `Offset` points, causing CPU/memory exhaustion DoS.
+**Learning:** Loop step increments calculated from dynamic UI state or user config parameters must be validated to be strictly positive and bounded by a minimum threshold to guarantee finite forward progress.
+**Prevention:** Validate step parameters with `.isFinite() && > 0f` guards and coerce calculated step increments with `maxOf(minStepThreshold, step)` before using them in iteration loops.
