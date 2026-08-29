@@ -92,6 +92,20 @@ class GraphExportTest {
     }
 
     @Test
+    fun testToSvgEscapesNodeIdAttribute() {
+        val maliciousId = "node\" onload=\"alert(1)\" <tag>&"
+        val nodes = listOf(GraphNode(maliciousId, "Label"))
+        val state = GraphState(initialNodes = nodes)
+        state.onNodeDragged(maliciousId, Offset(0f, 0f))
+
+        val svg = GraphExport.toSvg(state, nodeLabel = { it.data })
+
+        assertTrue(!svg.contains("onload=\"alert(1)\""))
+        assertTrue(!svg.contains("<tag>"))
+        assertTrue(svg.contains("id=\"node&quot; onload=&quot;alert(1)&quot; &lt;tag&gt;&amp;\""))
+    }
+
+    @Test
     fun testToSvgStripsInvalidXmlControlCharacters() {
         // Includes null byte \u0000, control char \u0007, and surrogate pair \uD83D\uDE00 (😃)
         val nodes = listOf(GraphNode("1", "Node\u0000\u0007Test \uD83D\uDE00"))
