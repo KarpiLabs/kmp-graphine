@@ -245,4 +245,18 @@ class GraphStateTest {
         state.setNodePositions(mapOf("1" to Offset(100f, Float.POSITIVE_INFINITY)))
         assertEquals(Offset(10f, 20f), state.nodeStates["1"]?.position)
     }
+
+    @Test
+    fun testNonFiniteSnapGridSizeIsIgnored() {
+        val node = GraphNode("1", "Data")
+        val state = GraphState(initialNodes = listOf(node))
+
+        state.snapGridSize = Float.NaN
+        state.onNodeDragged("1", Offset(10f, 20f))
+        assertEquals(Offset(10f, 20f), state.nodeStates["1"]?.position)
+
+        state.snapGridSize = Float.POSITIVE_INFINITY
+        state.onNodeDragged("1", Offset(5f, 5f))
+        assertEquals(Offset(15f, 25f), state.nodeStates["1"]?.position)
+    }
 }
