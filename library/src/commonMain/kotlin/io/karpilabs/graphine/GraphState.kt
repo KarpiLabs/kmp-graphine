@@ -184,12 +184,13 @@ class GraphState<T>(
         var newPos = current.position + delta
         if (!newPos.isFiniteOffset()) return
 
-        if (snapGridSize > 0) {
+        if (snapGridSize.isFiniteNumber() && snapGridSize > 0f) {
             newPos = Offset(
                 (newPos.x / snapGridSize).roundToInt() * snapGridSize,
                 (newPos.y / snapGridSize).roundToInt() * snapGridSize,
             )
         }
+        if (!newPos.isFiniteOffset()) return
 
         _nodeStates[nodeId] = current.copy(position = newPos)
     }
