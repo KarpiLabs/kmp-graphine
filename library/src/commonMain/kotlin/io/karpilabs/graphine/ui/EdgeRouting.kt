@@ -88,15 +88,25 @@ internal fun findObstacleBow(
     toId: String,
     nodeRects: Map<String, Rect>,
 ): Offset? {
+    // Security guard: Validate input offsets and vectors to prevent NaN/Infinity propagation to UI canvas
+    if (!from.isFiniteOffset() || !to.isFiniteOffset()) return null
     val dir = to - from
     val len = dir.getDistance()
-    if (len < 1f) return null
+    if (!len.isFiniteNumber() || len < 1f) return null
     val normal = Offset(-dir.y / len, dir.x / len)
+    if (!normal.isFiniteOffset()) return null
 
     var maxPush = 0f
     var sideSum = 0f
     nodeRects.forEach { (id, rect) ->
         if (id == fromId || id == toId) return@forEach
+        if (!rect.left.isFiniteNumber() ||
+            !rect.top.isFiniteNumber() ||
+            !rect.right.isFiniteNumber() ||
+            !rect.bottom.isFiniteNumber()
+        ) {
+            return@forEach
+        }
         if (segmentIntersectsRect(from, to, rect)) {
             val center = rect.center
             val cross = dir.x * (center.y - from.y) - dir.y * (center.x - from.x)
@@ -110,7 +120,8 @@ internal fun findObstacleBow(
     // Bow away from the side where most obstacles sit.
     val sign = if (sideSum >= 0f) -1f else 1f
     val mid = Offset((from.x + to.x) / 2f, (from.y + to.y) / 2f)
-    return mid + normal * (maxPush * sign)
+    val result = mid + normal * (maxPush * sign)
+    return if (result.isFiniteOffset()) result else null
 }
 
 internal fun segmentIntersectsRect(p1: Offset, p2: Offset, rect: Rect): Boolean {
