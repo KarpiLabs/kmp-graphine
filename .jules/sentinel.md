@@ -17,3 +17,8 @@
 **Vulnerability:** `GraphBackground` calculated `scaledGridSize = gridSize * state.scale` without validation. If `gridSize` or `scale` was 0, negative, `NaN`, or near-zero, `while (x < canvasWidth + scaledGridSize)` resulted in infinite loops (`x += 0`) that froze the UI composition thread or generated millions of `Offset` points, causing CPU/memory exhaustion DoS.
 **Learning:** Loop step increments calculated from dynamic UI state or user config parameters must be validated to be strictly positive and bounded by a minimum threshold to guarantee finite forward progress.
 **Prevention:** Validate step parameters with `.isFinite() && > 0f` guards and coerce calculated step increments with `maxOf(minStepThreshold, step)` before using them in iteration loops.
+
+## 2026-03-31 - Non-Finite Control Point Propagation in Obstacle Avoidance Routing
+**Vulnerability:** Obstacle-avoidance edge routing calculated control point vectors (`dir`, `normal`) without `.isFiniteOffset()` validation, allowing `NaN` or `Infinity` coordinates from unmeasured or corrupted node bounds to produce `NaN` quadratic Bezier control points (`quadraticTo(bow.x, bow.y, ...)`), breaking Compose canvas path rendering.
+**Learning:** Vector distance calculations (`to - from`).getDistance() evaluate `len < 1f` to `false` when `len` is `NaN`, causing division by `NaN` that propagates invalid floating-point numbers into canvas path primitives.
+**Prevention:** Always validate line segment endpoints, distances, vector normals, and calculated control points with `.isFiniteOffset()` and `.isFiniteNumber()` guards before returning geometric control points to drawing routines.

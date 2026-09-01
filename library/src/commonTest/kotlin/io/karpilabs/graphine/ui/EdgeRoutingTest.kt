@@ -124,4 +124,24 @@ class EdgeRoutingTest {
         val nanRect = Rect(0f, 0f, Float.NaN, 60f)
         assertEquals(Offset.Zero, portAnchor(nanRect, NodePort.TOP))
     }
+
+    @Test
+    fun testFindObstacleBowHandlesNonFiniteValues() {
+        val validFrom = Offset(0f, 0f)
+        val validTo = Offset(100f, 0f)
+        val validRects = mapOf("obstacle" to Rect(40f, -10f, 60f, 10f))
+
+        // Non-finite 'from' offset
+        assertNull(findObstacleBow(Offset(Float.NaN, 0f), validTo, "a", "b", validRects))
+
+        // Non-finite 'to' offset
+        assertNull(findObstacleBow(validFrom, Offset(100f, Float.POSITIVE_INFINITY), "a", "b", validRects))
+
+        // Non-finite rect bounds in obstacle map
+        val nanRects = mapOf("obstacle" to Rect(40f, -10f, Float.NaN, 10f))
+        assertNull(findObstacleBow(validFrom, validTo, "a", "b", nanRects))
+
+        // Zero-length path
+        assertNull(findObstacleBow(validFrom, validFrom, "a", "b", validRects))
+    }
 }
