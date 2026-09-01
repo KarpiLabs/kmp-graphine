@@ -259,4 +259,56 @@ class GraphStateTest {
         state.onNodeDragged("1", Offset(5f, 5f))
         assertEquals(Offset(15f, 25f), state.nodeStates["1"]?.position)
     }
+
+    @Test
+    fun testNonFiniteOrNonPositiveViewportInCenterOnNodeAnimatedIsIgnored() {
+        val node = GraphNode("1", "Data")
+        val state = GraphState(initialNodes = listOf(node))
+        val initialOffset = state.offset
+        val initialScale = state.scale
+
+        kotlinx.coroutines.runBlocking {
+            state.centerOnNodeAnimated("1", Float.NaN, 1000f)
+            assertEquals(initialOffset, state.offset)
+            assertEquals(initialScale, state.scale)
+
+            state.centerOnNodeAnimated("1", 1000f, Float.POSITIVE_INFINITY)
+            assertEquals(initialOffset, state.offset)
+            assertEquals(initialScale, state.scale)
+
+            state.centerOnNodeAnimated("1", 0f, 1000f)
+            assertEquals(initialOffset, state.offset)
+            assertEquals(initialScale, state.scale)
+
+            state.centerOnNodeAnimated("1", 1000f, -500f)
+            assertEquals(initialOffset, state.offset)
+            assertEquals(initialScale, state.scale)
+        }
+    }
+
+    @Test
+    fun testNonFiniteOrNonPositiveViewportInFlyToNodeAnimatedIsIgnored() {
+        val node = GraphNode("1", "Data")
+        val state = GraphState(initialNodes = listOf(node))
+        val initialOffset = state.offset
+        val initialScale = state.scale
+
+        kotlinx.coroutines.runBlocking {
+            state.flyToNodeAnimated("1", Float.NaN, 1000f)
+            assertEquals(initialOffset, state.offset)
+            assertEquals(initialScale, state.scale)
+
+            state.flyToNodeAnimated("1", 1000f, Float.POSITIVE_INFINITY)
+            assertEquals(initialOffset, state.offset)
+            assertEquals(initialScale, state.scale)
+
+            state.flyToNodeAnimated("1", 0f, 1000f)
+            assertEquals(initialOffset, state.offset)
+            assertEquals(initialScale, state.scale)
+
+            state.flyToNodeAnimated("1", 1000f, -500f)
+            assertEquals(initialOffset, state.offset)
+            assertEquals(initialScale, state.scale)
+        }
+    }
 }

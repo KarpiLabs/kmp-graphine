@@ -251,6 +251,8 @@ class GraphState<T>(
      * Animates the camera to focus on a specific node.
      */
     suspend fun centerOnNodeAnimated(nodeId: String, viewportWidth: Float, viewportHeight: Float) {
+        // Security guard: Validate viewport dimensions to prevent non-finite/invalid float propagation into animation state
+        if (!viewportWidth.isFiniteNumber() || !viewportHeight.isFiniteNumber() || viewportWidth <= 0f || viewportHeight <= 0f) return
         val nodePos = _nodeStates[nodeId]?.position ?: return
         val targetScale = 1.2f
         val targetOffset = Offset(
@@ -268,6 +270,8 @@ class GraphState<T>(
         viewportWidth: Float,
         viewportHeight: Float,
     ) = coroutineScope {
+        // Security guard: Validate viewport dimensions to prevent non-finite/invalid float propagation into animation state
+        if (!viewportWidth.isFiniteNumber() || !viewportHeight.isFiniteNumber() || viewportWidth <= 0f || viewportHeight <= 0f) return@coroutineScope
         animateTo(0.8f, offset, viewportWidth, viewportHeight) // Zoom out for context
         centerOnNodeAnimated(nodeId, viewportWidth, viewportHeight)
     }
