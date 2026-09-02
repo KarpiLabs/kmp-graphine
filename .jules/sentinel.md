@@ -17,3 +17,8 @@
 **Vulnerability:** `GraphBackground` calculated `scaledGridSize = gridSize * state.scale` without validation. If `gridSize` or `scale` was 0, negative, `NaN`, or near-zero, `while (x < canvasWidth + scaledGridSize)` resulted in infinite loops (`x += 0`) that froze the UI composition thread or generated millions of `Offset` points, causing CPU/memory exhaustion DoS.
 **Learning:** Loop step increments calculated from dynamic UI state or user config parameters must be validated to be strictly positive and bounded by a minimum threshold to guarantee finite forward progress.
 **Prevention:** Validate step parameters with `.isFinite() && > 0f` guards and coerce calculated step increments with `maxOf(minStepThreshold, step)` before using them in iteration loops.
+
+## 2026-03-31 - Positive Float.MIN_VALUE Corrupting Bounding Box Calculations for Negative Coordinates
+**Vulnerability:** Initializing upper bound tracking variables (`maxX`, `maxY`) to `Float.MIN_VALUE` caused bounding box calculations (`getContentBounds`, `computeFitBounds`, group zones, minimap) to incorrectly expand `maxX` and `maxY` to `~0f` when all node coordinates were negative.
+**Learning:** In Kotlin and Java, `Float.MIN_VALUE` is `1.4E-45f` (the smallest positive non-zero float value), NOT `-Float.MAX_VALUE` or negative infinity.
+**Prevention:** Always initialize maximum bounding box search accumulators (`maxX`, `maxY`) to `-Float.MAX_VALUE` or `Float.NEGATIVE_INFINITY` when calculating coordinate bounds.

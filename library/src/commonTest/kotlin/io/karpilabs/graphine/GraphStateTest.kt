@@ -21,12 +21,32 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.unit.IntSize
 import io.karpilabs.graphine.model.GraphEdge
 import io.karpilabs.graphine.model.GraphNode
+import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class GraphStateTest {
+    @Test
+    fun testNegativeCoordinatesContentBoundsAndFitBounds() {
+        val n1 = GraphNode("1", "A")
+        val n2 = GraphNode("2", "B")
+        val state = GraphState(initialNodes = listOf(n1, n2))
+
+        // Drag both nodes to strictly negative coordinates
+        state.onNodeDragged("1", Offset(-200f, -150f))
+        state.onNodeResized("1", IntSize(20, 20)) // right: -180, bottom: -130
+        state.onNodeDragged("2", Offset(-100f, -50f))
+        state.onNodeResized("2", IntSize(20, 20)) // right: -80, bottom: -30
+
+        val bounds = state.getContentBounds()
+        assertEquals(Rect(-200f, -150f, -80f, -30f), bounds)
+
+        val fitBounds = state.computeFitBounds()
+        assertEquals(Rect(-200f, -150f, -100f, -50f), fitBounds)
+    }
+
     @Test
     fun testNodeDragging() {
         val node = GraphNode("1", "Data")
@@ -267,7 +287,7 @@ class GraphStateTest {
         val initialOffset = state.offset
         val initialScale = state.scale
 
-        kotlinx.coroutines.runBlocking {
+        runTest {
             state.centerOnNodeAnimated("1", Float.NaN, 1000f)
             assertEquals(initialOffset, state.offset)
             assertEquals(initialScale, state.scale)
@@ -293,7 +313,7 @@ class GraphStateTest {
         val initialOffset = state.offset
         val initialScale = state.scale
 
-        kotlinx.coroutines.runBlocking {
+        runTest {
             state.flyToNodeAnimated("1", Float.NaN, 1000f)
             assertEquals(initialOffset, state.offset)
             assertEquals(initialScale, state.scale)
