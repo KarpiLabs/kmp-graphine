@@ -58,8 +58,8 @@ fun Minimap(
             // 1. Calculate Bounding Box of all nodes
             var minX = Float.MAX_VALUE
             var minY = Float.MAX_VALUE
-            var maxX = Float.MIN_VALUE
-            var maxY = Float.MIN_VALUE
+            var maxX = -Float.MAX_VALUE
+            var maxY = -Float.MAX_VALUE
 
             val validPositions = state.nodeStates.values
                 .map { it.position }

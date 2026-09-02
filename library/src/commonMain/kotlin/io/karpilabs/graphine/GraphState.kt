@@ -106,8 +106,11 @@ class GraphState<T>(
         if (_nodeStates.isEmpty()) return Rect(0f, 0f, 0f, 0f)
         var minX = Float.MAX_VALUE
         var minY = Float.MAX_VALUE
-        var maxX = Float.MIN_VALUE
-        var maxY = Float.MIN_VALUE
+        // Security guard: Initialize max bounds to -Float.MAX_VALUE rather than Float.MIN_VALUE,
+        // because Float.MIN_VALUE in Kotlin/Java is a positive float (~1.4E-45f), which corrupts
+        // bounding box calculations when all node positions are at negative coordinates.
+        var maxX = -Float.MAX_VALUE
+        var maxY = -Float.MAX_VALUE
 
         _nodeStates.values.forEach { state ->
             // Security guard: Skip nodes with non-finite coordinates to prevent NaN propagation
@@ -372,8 +375,8 @@ class GraphState<T>(
         if (trim <= 0f || points.size < 8) {
             var minX = Float.MAX_VALUE
             var minY = Float.MAX_VALUE
-            var maxX = Float.MIN_VALUE
-            var maxY = Float.MIN_VALUE
+            var maxX = -Float.MAX_VALUE
+            var maxY = -Float.MAX_VALUE
             points.forEach { p ->
                 minX = minOf(minX, p.x)
                 minY = minOf(minY, p.y)

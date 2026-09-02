@@ -662,8 +662,8 @@ private fun DrawScope.drawGroupZone(group: GraphGroup, state: GraphState<*>) {
 
     var minX = Float.MAX_VALUE
     var minY = Float.MAX_VALUE
-    var maxX = Float.MIN_VALUE
-    var maxY = Float.MIN_VALUE
+    var maxX = -Float.MAX_VALUE
+    var maxY = -Float.MAX_VALUE
 
     nodePositions.forEach { pos ->
         minX = minOf(minX, pos.x)

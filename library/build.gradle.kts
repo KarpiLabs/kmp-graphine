@@ -46,6 +46,7 @@ kotlin {
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
+            implementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:${libs.versions.kotlinxCoroutines.get()}")
         }
         androidMain.dependencies {
             implementation(libs.androidx.activity.compose)
