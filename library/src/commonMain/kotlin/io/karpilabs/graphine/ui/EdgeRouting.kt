@@ -21,15 +21,15 @@ import androidx.compose.ui.geometry.Rect
 import io.karpilabs.graphine.model.NodePort
 import kotlin.math.abs
 
-private fun Float.isFiniteNumber(): Boolean = !isNaN() && !isInfinite()
-private fun Offset.isFiniteOffset(): Boolean = x.isFiniteNumber() && y.isFiniteNumber()
+private fun Float.isFiniteNumber(): Boolean = isFinite()
+private fun Offset.isFiniteOffset(): Boolean = x.isFinite() && y.isFinite()
 
 /** The point on [rect]'s boundary corresponding to a fixed [NodePort] side. */
 internal fun portAnchor(rect: Rect, port: NodePort): Offset {
-    if (!rect.left.isFiniteNumber() ||
-        !rect.top.isFiniteNumber() ||
-        !rect.right.isFiniteNumber() ||
-        !rect.bottom.isFiniteNumber()
+    if (!rect.left.isFinite() ||
+        !rect.top.isFinite() ||
+        !rect.right.isFinite() ||
+        !rect.bottom.isFinite()
     ) {
         return Offset.Zero
     }
@@ -50,8 +50,8 @@ internal fun clipToRectBoundary(center: Offset, target: Offset, rect: Rect): Off
     // Security guard: Validate finite offsets and rect dimensions to prevent NaN propagation to UI canvas
     if (!center.isFiniteOffset()) return Offset.Zero
     if (!target.isFiniteOffset() ||
-        !rect.width.isFiniteNumber() ||
-        !rect.height.isFiniteNumber() ||
+        !rect.width.isFinite() ||
+        !rect.height.isFinite() ||
         rect.width <= 0f ||
         rect.height <= 0f
     ) {
@@ -60,7 +60,7 @@ internal fun clipToRectBoundary(center: Offset, target: Offset, rect: Rect): Off
 
     val dx = target.x - center.x
     val dy = target.y - center.y
-    if (!dx.isFiniteNumber() || !dy.isFiniteNumber() || (dx == 0f && dy == 0f)) return center
+    if (!dx.isFinite() || !dy.isFinite() || (dx == 0f && dy == 0f)) return center
 
     val halfW = rect.width / 2f
     val halfH = rect.height / 2f
@@ -68,7 +68,7 @@ internal fun clipToRectBoundary(center: Offset, target: Offset, rect: Rect): Off
     val scaleY = if (dy != 0f) halfH / abs(dy) else Float.MAX_VALUE
     val scale = minOf(scaleX, scaleY, 1f)
 
-    if (!scale.isFiniteNumber()) return center
+    if (!scale.isFinite()) return center
     val result = Offset(center.x + dx * scale, center.y + dy * scale)
     return if (result.isFiniteOffset()) result else center
 }
@@ -88,21 +88,25 @@ internal fun findObstacleBow(
     toId: String,
     nodeRects: Map<String, Rect>,
 ): Offset? {
+    // Security guard: Validate finite inputs to prevent NaN/Infinity propagation to Bezier curve control points
+    if (!from.isFiniteOffset() || !to.isFiniteOffset()) return null
     val dir = to - from
     val len = dir.getDistance()
-    if (len < 1f) return null
+    if (!len.isFinite() || len < 1f) return null
     val normal = Offset(-dir.y / len, dir.x / len)
+    if (!normal.isFiniteOffset()) return null
 
     var maxPush = 0f
     var sideSum = 0f
     nodeRects.forEach { (id, rect) ->
         if (id == fromId || id == toId) return@forEach
+        if (!rect.left.isFinite() || !rect.top.isFinite() || !rect.right.isFinite() || !rect.bottom.isFinite()) return@forEach
         if (segmentIntersectsRect(from, to, rect)) {
             val center = rect.center
             val cross = dir.x * (center.y - from.y) - dir.y * (center.x - from.x)
             sideSum += if (cross >= 0f) 1f else -1f
             val push = maxOf(rect.width, rect.height) / 2f + 24f
-            if (push > maxPush) maxPush = push
+            if (push.isFinite() && push > maxPush) maxPush = push
         }
     }
     if (maxPush <= 0f) return null
@@ -110,7 +114,8 @@ internal fun findObstacleBow(
     // Bow away from the side where most obstacles sit.
     val sign = if (sideSum >= 0f) -1f else 1f
     val mid = Offset((from.x + to.x) / 2f, (from.y + to.y) / 2f)
-    return mid + normal * (maxPush * sign)
+    val result = mid + normal * (maxPush * sign)
+    return if (result.isFiniteOffset()) result else null
 }
 
 internal fun segmentIntersectsRect(p1: Offset, p2: Offset, rect: Rect): Boolean {

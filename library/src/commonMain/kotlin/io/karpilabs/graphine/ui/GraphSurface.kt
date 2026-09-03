@@ -642,8 +642,14 @@ private fun normalizeRect(a: Offset, b: Offset): Rect = Rect(
 )
 
 private fun DrawScope.drawArrowhead(to: Offset, from: Offset, config: EdgeConfig, alpha: Float = 1f) {
-    val angle = atan2(to.y - from.y, to.x - from.x)
-    val size = config.arrowheadSize
+    // Security guard: Validate finite offsets and non-zero direction vectors to prevent corrupted path drawing
+    if (!to.x.isFinite() || !to.y.isFinite() || !from.x.isFinite() || !from.y.isFinite()) return
+    val dx = to.x - from.x
+    val dy = to.y - from.y
+    if (!dx.isFinite() || !dy.isFinite() || (dx == 0f && dy == 0f)) return
+    val angle = atan2(dy, dx)
+    if (!angle.isFinite()) return
+    val size = if (config.arrowheadSize.isFinite() && config.arrowheadSize > 0f) config.arrowheadSize else 10f
     val path = Path().apply {
         moveTo(to.x, to.y)
         lineTo(to.x - size * cos(angle - 0.5f), to.y - size * sin(angle - 0.5f))
