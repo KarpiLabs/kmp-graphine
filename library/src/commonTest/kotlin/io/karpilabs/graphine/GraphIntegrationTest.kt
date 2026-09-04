@@ -22,6 +22,7 @@ import io.karpilabs.graphine.model.GraphConfig
 import io.karpilabs.graphine.model.GraphEdge
 import io.karpilabs.graphine.model.GraphGroup
 import io.karpilabs.graphine.model.GraphNode
+import io.karpilabs.graphine.model.GroupConfig
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -269,5 +270,37 @@ class GraphIntegrationTest {
         val bounds = state.getContentBounds()
         assertTrue(bounds.width > 0f)
         assertTrue(bounds.height > 0f)
+    }
+
+    @Test
+    fun testGroupConfigValidationAndNonFiniteGuards() {
+        val nodes = (1..3).map { GraphNode(id = "n$it", data = "Node $it") }
+        val groups = listOf(
+            GraphGroup("g1", "Group 1", listOf("n1", "n2"), color = androidx.compose.ui.graphics.Color.Blue),
+        )
+        val customGroupConfig = GroupConfig(
+            padding = 150f,
+            cornerRadius = 40f,
+            backgroundAlpha = 0.05f,
+            borderAlpha = 0.3f,
+            borderWidth = 2f,
+        )
+        val config = GraphConfig(groupConfig = customGroupConfig)
+        val state = GraphState(initialNodes = nodes, initialGroups = groups, initialConfig = config)
+
+        assertEquals(150f, state.config.groupConfig.padding)
+        assertEquals(40f, state.config.groupConfig.cornerRadius)
+        assertEquals(0.05f, state.config.groupConfig.backgroundAlpha)
+
+        // Non-finite group config parameters
+        val nonFiniteGroupConfig = GroupConfig(
+            padding = Float.NaN,
+            cornerRadius = Float.POSITIVE_INFINITY,
+            backgroundAlpha = Float.NaN,
+            borderAlpha = Float.NEGATIVE_INFINITY,
+            borderWidth = Float.NaN,
+        )
+        state.config = GraphConfig(groupConfig = nonFiniteGroupConfig)
+        assertTrue(state.config.groupConfig.padding.isNaN())
     }
 }
