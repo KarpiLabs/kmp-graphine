@@ -360,6 +360,7 @@ private fun SliderRow(
     onValueChange: (Float) -> Unit,
     sliderColors: androidx.compose.material3.SliderColors,
 ) {
+    val safeValue = if (value.isFinite()) value.coerceIn(valueRange.start, valueRange.endInclusive) else valueRange.start
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -383,7 +384,7 @@ private fun SliderRow(
             )
         }
         Slider(
-            value = value,
+            value = safeValue,
             onValueChange = onValueChange,
             valueRange = valueRange,
             colors = sliderColors,
@@ -440,9 +441,14 @@ private fun GroupRow(
     }
 }
 
-private fun formatFloat(value: Float, decimals: Int): String {
+internal fun formatFloat(value: Float, decimals: Int): String {
+    if (!value.isFinite()) return "0"
+    val safeDecimals = decimals.coerceIn(0, 6)
     var factor = 1f
-    repeat(decimals) { factor *= 10f }
-    val rounded = (value * factor).toInt() / factor
+    repeat(safeDecimals) { factor *= 10f }
+    val maxAllowed = Int.MAX_VALUE / factor
+    val minAllowed = Int.MIN_VALUE / factor
+    val clampedValue = value.coerceIn(minAllowed, maxAllowed)
+    val rounded = (clampedValue * factor).toInt() / factor
     return rounded.toString()
 }
