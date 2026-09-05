@@ -678,16 +678,29 @@ private fun DrawScope.drawGroupZone(group: GraphGroup, state: GraphState<*>) {
         maxY = maxOf(maxY, pos.y)
     }
 
-    val padding = 120f
+    // Security guard: Validate groupConfig parameters with .isFinite() and non-negative/coerceIn guards
+    // to prevent NaN/Infinity or negative values from corrupting Compose canvas drawing primitives.
+    val gc = state.config.groupConfig
+    val padding = if (gc.padding.isFinite() && gc.padding >= 0f) gc.padding else 120f
+    val cornerRadius = if (gc.cornerRadius.isFinite() && gc.cornerRadius >= 0f) gc.cornerRadius else 32f
+    val bgAlpha = if (gc.backgroundAlpha.isFinite()) gc.backgroundAlpha.coerceIn(0f, 1f) else 0.03f
+    val borderAlpha = if (gc.borderAlpha.isFinite()) gc.borderAlpha.coerceIn(0f, 1f) else 0.2f
+    val borderWidth = if (gc.borderWidth.isFinite() && gc.borderWidth >= 0f) gc.borderWidth else 1.5f
+
     val rect = Rect(minX - padding, minY - padding, maxX + padding, maxY + padding)
 
-    drawRoundRect(color = group.color.copy(alpha = 0.03f), topLeft = rect.topLeft, size = rect.size, cornerRadius = CornerRadius(32f))
     drawRoundRect(
-        color = Color.Gray.copy(alpha = 0.2f),
+        color = group.color.copy(alpha = group.color.alpha * bgAlpha),
         topLeft = rect.topLeft,
         size = rect.size,
-        cornerRadius = CornerRadius(32f),
-        style = Stroke(width = 1.5f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(15f, 15f), 0f)),
+        cornerRadius = CornerRadius(cornerRadius),
+    )
+    drawRoundRect(
+        color = Color.Gray.copy(alpha = borderAlpha),
+        topLeft = rect.topLeft,
+        size = rect.size,
+        cornerRadius = CornerRadius(cornerRadius),
+        style = Stroke(width = borderWidth, pathEffect = gc.pathEffect),
     )
 }
 
