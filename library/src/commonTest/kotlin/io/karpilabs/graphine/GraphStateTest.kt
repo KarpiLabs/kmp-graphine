@@ -331,4 +331,30 @@ class GraphStateTest {
             assertEquals(initialScale, state.scale)
         }
     }
+
+    @Test
+    fun testNonFiniteOrNonPositiveViewportInFitToScreenAnimatedIsIgnored() {
+        val node = GraphNode("1", "Data")
+        val state = GraphState(initialNodes = listOf(node))
+        val initialOffset = state.offset
+        val initialScale = state.scale
+
+        runTest {
+            state.fitToScreenAnimated(Float.NaN, 1000f)
+            assertEquals(initialOffset, state.offset)
+            assertEquals(initialScale, state.scale)
+
+            state.fitToScreenAnimated(1000f, Float.POSITIVE_INFINITY)
+            assertEquals(initialOffset, state.offset)
+            assertEquals(initialScale, state.scale)
+
+            state.fitToScreenAnimated(0f, 1000f)
+            assertEquals(initialOffset, state.offset)
+            assertEquals(initialScale, state.scale)
+
+            state.fitToScreenAnimated(1000f, -500f)
+            assertEquals(initialOffset, state.offset)
+            assertEquals(initialScale, state.scale)
+        }
+    }
 }
