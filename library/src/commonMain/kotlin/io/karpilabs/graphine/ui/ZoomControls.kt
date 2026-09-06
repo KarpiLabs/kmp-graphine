@@ -30,6 +30,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import io.karpilabs.graphine.GraphState
@@ -54,7 +55,12 @@ fun ZoomControls(
     ) {
         IconButton(onClick = {
             scope.launch {
-                state.animateTo((state.scale * 1.2f).coerceAtMost(5f), state.offset)
+                val safeScale = if (state.scale.isFinite() && state.scale > 0f) state.scale else 1f
+                val safeOffset = if (state.offset.x.isFinite() && state.offset.y.isFinite()) state.offset else Offset.Zero
+                val minS = if (state.config.minScale.isFinite() && state.config.minScale > 0f) state.config.minScale else 0.1f
+                val maxS = if (state.config.maxScale.isFinite() && state.config.maxScale > 0f) state.config.maxScale else 5f
+                val targetScale = (safeScale * 1.2f).coerceIn(minS, maxS)
+                state.animateTo(targetScale, safeOffset)
             }
         }) {
             Icon(Icons.Filled.Add, contentDescription = "Zoom In")
@@ -62,7 +68,12 @@ fun ZoomControls(
 
         IconButton(onClick = {
             scope.launch {
-                state.animateTo((state.scale / 1.2f).coerceAtLeast(0.1f), state.offset)
+                val safeScale = if (state.scale.isFinite() && state.scale > 0f) state.scale else 1f
+                val safeOffset = if (state.offset.x.isFinite() && state.offset.y.isFinite()) state.offset else Offset.Zero
+                val minS = if (state.config.minScale.isFinite() && state.config.minScale > 0f) state.config.minScale else 0.1f
+                val maxS = if (state.config.maxScale.isFinite() && state.config.maxScale > 0f) state.config.maxScale else 5f
+                val targetScale = (safeScale / 1.2f).coerceIn(minS, maxS)
+                state.animateTo(targetScale, safeOffset)
             }
         }) {
             Icon(Icons.Filled.Remove, contentDescription = "Zoom Out")

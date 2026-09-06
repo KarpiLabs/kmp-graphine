@@ -322,7 +322,7 @@ class GraphState<T>(
         trimFraction: Float = 0f,
         immediate: Boolean = false,
     ) {
-        if (_nodeStates.isEmpty() || viewportWidth <= 0f || viewportHeight <= 0f) return
+        if (_nodeStates.isEmpty() || !viewportWidth.isFinite() || !viewportHeight.isFinite() || viewportWidth <= 0f || viewportHeight <= 0f) return
 
         val bounds = computeFitBounds(trimFraction) ?: return
         if (bounds.width <= 0f && bounds.height <= 0f) return
