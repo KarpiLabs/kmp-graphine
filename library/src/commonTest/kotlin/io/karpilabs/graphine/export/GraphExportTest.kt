@@ -174,4 +174,17 @@ class GraphExportTest {
         assertTrue(model.height.isFinite() && model.height > 0f)
         assertTrue(model.nodes.all { it.radius > 0f && it.radius.isFinite() })
     }
+
+    @Test
+    fun testToSvgSanitizesNonFiniteEdgeWidthAndClipCoordinates() {
+        val state = sampleState()
+        val svg = GraphExport.toSvg(
+            state = state,
+            edgeConfig = EdgeConfig(width = Float.NaN),
+        )
+
+        assertTrue(!svg.contains("NaN"))
+        assertTrue(!svg.contains("Infinity"))
+        assertTrue(svg.contains("stroke-width=\"1\""))
+    }
 }
