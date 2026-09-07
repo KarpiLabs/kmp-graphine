@@ -175,6 +175,7 @@ object GraphExport {
     }
 
     private fun fmt(value: Float): String {
+        if (!value.isFinite()) return "0"
         val rounded = round(value * 100f) / 100f
         return if (rounded == rounded.toLong().toFloat()) rounded.toLong().toString() else rounded.toString()
     }
@@ -228,6 +229,7 @@ private fun routeExportEdge(
     style: EdgeStyle,
     edgeConfig: EdgeConfig,
 ): ExportEdge {
+    val safeWidth = if (edgeConfig.width.isFinite() && edgeConfig.width > 0f) edgeConfig.width else 1f
     val clippedFrom = clipToCircle(from, to, fromRadius)
     val clippedTo = clipToCircle(to, from, toRadius)
     val (points, isCubic) = when (style) {
@@ -247,13 +249,15 @@ private fun routeExportEdge(
             (listOf(clippedFrom) + bends + clippedTo) to false
         }
     }
-    return ExportEdge(points, isCubic, edgeConfig.color, edgeConfig.width, edgeConfig.showArrowheads)
+    return ExportEdge(points, isCubic, edgeConfig.color, safeWidth, edgeConfig.showArrowheads)
 }
 
 private fun clipToCircle(center: Offset, target: Offset, radius: Float): Offset {
+    if (!center.x.isFinite() || !center.y.isFinite() || !target.x.isFinite() || !target.y.isFinite() || !radius.isFinite()) return center
     val dx = target.x - center.x
     val dy = target.y - center.y
     val len = sqrt(dx * dx + dy * dy)
-    if (len <= radius || len == 0f) return center
-    return Offset(center.x + dx / len * radius, center.y + dy / len * radius)
+    if (!len.isFinite() || len <= radius || len == 0f) return center
+    val result = Offset(center.x + dx / len * radius, center.y + dy / len * radius)
+    return if (result.x.isFinite() && result.y.isFinite()) result else center
 }
