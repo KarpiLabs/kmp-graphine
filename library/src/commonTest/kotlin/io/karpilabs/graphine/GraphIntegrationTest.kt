@@ -303,4 +303,27 @@ class GraphIntegrationTest {
         state.config = GraphConfig(groupConfig = nonFiniteGroupConfig)
         assertTrue(state.config.groupConfig.padding.isNaN())
     }
+
+    @Test
+    fun testSearchLabelProviderExceptionHandledSafely() {
+        val nodes = listOf(
+            GraphNode(id = "n1", data = "Node 1"),
+            GraphNode(id = "n2", data = "Node 2"),
+        )
+        val state = GraphState(initialNodes = nodes)
+
+        val throwingLabelProvider: (String) -> String = { id ->
+            if (id == "n1") throw RuntimeException("Simulated label provider failure")
+            "Node 2 Label"
+        }
+
+        // Simulating GraphSearch matching logic
+        val query = "Node 2"
+        val match = state.nodeStates.keys.find { id ->
+            val label = runCatching { throwingLabelProvider(id) }.getOrDefault("")
+            label.contains(query, ignoreCase = true)
+        }
+
+        assertEquals("n2", match)
+    }
 }

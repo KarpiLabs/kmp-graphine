@@ -71,7 +71,8 @@ fun GraphSearch(
                     // Auto-fly to first match
                     if (newValue.length >= 2) {
                         val match = state.nodeStates.keys.find {
-                            nodeLabelProvider(it).contains(newValue, ignoreCase = true)
+                            val label = runCatching { nodeLabelProvider(it) }.getOrDefault("")
+                            label.contains(newValue, ignoreCase = true)
                         }
                         match?.let {
                             scope.launch { state.flyToNodeAnimated(it, viewportWidth, viewportHeight) }
