@@ -43,6 +43,22 @@ import io.karpilabs.graphine.GraphState
 import kotlinx.coroutines.launch
 
 /**
+ * Performs node matching for search queries with runCatching validation to prevent UI thread crashes
+ * when custom node label providers throw exceptions.
+ */
+internal fun findSearchMatch(
+    nodeIds: Set<String>,
+    query: String,
+    nodeLabelProvider: (String) -> String,
+): String? {
+    if (query.length < 2) return null
+    return nodeIds.find { id ->
+        val label = runCatching { nodeLabelProvider(id) }.getOrDefault(id)
+        label.contains(query, ignoreCase = true)
+    }
+}
+
+/**
  * A built-in search bar for the graph that performs the "Flight Camera" animation.
  */
 @Composable
@@ -69,11 +85,9 @@ fun GraphSearch(
                 if (newValue.length <= 100) {
                     query = newValue
                     // Auto-fly to first match
-                    if (newValue.length >= 2) {
-                        val match = state.nodeStates.keys.find {
-                            nodeLabelProvider(it).contains(newValue, ignoreCase = true)
-                        }
-                        match?.let {
+                    val match = findSearchMatch(state.nodeStates.keys, newValue, nodeLabelProvider)
+                    match?.let {
+                        if (viewportWidth.isFinite() && viewportWidth > 0f && viewportHeight.isFinite() && viewportHeight > 0f) {
                             scope.launch { state.flyToNodeAnimated(it, viewportWidth, viewportHeight) }
                         }
                     }
