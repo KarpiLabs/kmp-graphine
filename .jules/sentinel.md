@@ -22,3 +22,8 @@
 **Vulnerability:** Initializing upper bound tracking variables (`maxX`, `maxY`) to `Float.MIN_VALUE` caused bounding box calculations (`getContentBounds`, `computeFitBounds`, group zones, minimap) to incorrectly expand `maxX` and `maxY` to `~0f` when all node coordinates were negative.
 **Learning:** In Kotlin and Java, `Float.MIN_VALUE` is `1.4E-45f` (the smallest positive non-zero float value), NOT `-Float.MAX_VALUE` or negative infinity.
 **Prevention:** Always initialize maximum bounding box search accumulators (`maxX`, `maxY`) to `-Float.MAX_VALUE` or `Float.NEGATIVE_INFINITY` when calculating coordinate bounds.
+
+## 2026-03-31 - Unhandled Custom Callback Exceptions in Search UI Thread
+**Vulnerability:** Live graph search query matching called consumer-provided `nodeLabelProvider` callbacks directly during UI text field state changes. Exceptions thrown by custom label providers crashed the Compose UI composition thread.
+**Learning:** Dynamic callbacks executed during UI composition or text input handling must handle user-space exceptions gracefully.
+**Prevention:** Always wrap consumer-supplied label/transform callbacks in `runCatching` with a safe fallback value (such as node ID) to prevent UI thread crashes.
