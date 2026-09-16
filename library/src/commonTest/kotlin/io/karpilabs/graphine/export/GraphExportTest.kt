@@ -187,4 +187,24 @@ class GraphExportTest {
         assertTrue(!svg.contains("Infinity"))
         assertTrue(svg.contains("stroke-width=\"1\""))
     }
+
+    @Test
+    fun testToSvgHandlesNonFiniteColorChannelsSafely() {
+        val state = sampleState()
+        val nonFiniteColor = androidx.compose.ui.graphics.Color(
+            red = Float.NaN,
+            green = Float.POSITIVE_INFINITY,
+            blue = -1f,
+        )
+
+        val svg = GraphExport.toSvg(
+            state = state,
+            backgroundColor = nonFiniteColor,
+            nodeColor = { nonFiniteColor },
+        )
+
+        assertTrue(!svg.contains("NaN"))
+        assertTrue(!svg.contains("Infinity"))
+        assertTrue(svg.contains("fill=\"#000000\""))
+    }
 }

@@ -214,7 +214,8 @@ object GraphExport {
 
 private fun Color.toCssColor(): String {
     fun channel(v: Float): String {
-        val i = (v * 255f).toInt().coerceIn(0, 255)
+        val safeV = if (v.isFinite()) v.coerceIn(0f, 1f) else 0f
+        val i = (safeV * 255f).toInt().coerceIn(0, 255)
         val hex = i.toString(16)
         return if (hex.length == 1) "0$hex" else hex
     }
