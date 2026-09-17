@@ -69,6 +69,11 @@ detekt {
     allRules = false
 }
 
+repositories {
+    google()
+    mavenCentral()
+}
+
 spotless {
     kotlin {
         target("src/**/*.kt")
