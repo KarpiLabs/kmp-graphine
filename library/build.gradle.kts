@@ -70,6 +70,7 @@ detekt {
 }
 
 repositories {
+    google()
     mavenCentral()
 }
 
