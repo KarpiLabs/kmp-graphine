@@ -55,17 +55,21 @@ fun GraphControls(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         IconButton(onClick = {
-            scope.launch {
-                state.fitToScreenAnimated(viewportWidth, viewportHeight)
+            if (viewportWidth.isFinite() && viewportHeight.isFinite() && viewportWidth > 0f && viewportHeight > 0f) {
+                scope.launch {
+                    state.fitToScreenAnimated(viewportWidth, viewportHeight)
+                }
             }
         }) {
             Icon(Icons.Filled.Fullscreen, contentDescription = "Fit to screen")
         }
 
         IconButton(onClick = {
-            state.targetId?.let { id ->
-                scope.launch {
-                    state.centerOnNodeAnimated(id, viewportWidth, viewportHeight)
+            if (viewportWidth.isFinite() && viewportHeight.isFinite() && viewportWidth > 0f && viewportHeight > 0f) {
+                state.targetId?.let { id ->
+                    scope.launch {
+                        state.centerOnNodeAnimated(id, viewportWidth, viewportHeight)
+                    }
                 }
             }
         }) {
