@@ -22,3 +22,8 @@
 **Vulnerability:** Initializing upper bound tracking variables (`maxX`, `maxY`) to `Float.MIN_VALUE` caused bounding box calculations (`getContentBounds`, `computeFitBounds`, group zones, minimap) to incorrectly expand `maxX` and `maxY` to `~0f` when all node coordinates were negative.
 **Learning:** In Kotlin and Java, `Float.MIN_VALUE` is `1.4E-45f` (the smallest positive non-zero float value), NOT `-Float.MAX_VALUE` or negative infinity.
 **Prevention:** Always initialize maximum bounding box search accumulators (`maxX`, `maxY`) to `-Float.MAX_VALUE` or `Float.NEGATIVE_INFINITY` when calculating coordinate bounds.
+
+## 2026-03-31 - Infinite Loop DoS and Vector NaN Propagation in Unsanitized ForceSimulationConfig
+**Vulnerability:** `ForceSimulation` accepted `ForceSimulationConfig` without parameter sanitization. If `alphaDecay` was `<= 0f` or `NaN`, `alpha` never decayed below `alphaMin`, trapping `rememberForceSimulation` in an infinite 60 FPS background loop (CPU exhaustion DoS). Furthermore, non-finite or negative parameters (`NaN`/`Infinity` in `repelStrength`, `centerStrength`, `maxVelocity`) propagated `NaN` into simulation vectors.
+**Learning:** Continuous physics simulations driven by frame loops rely on strictly positive decay rates and finite force multipliers; non-finite or non-positive config inputs prevent simulation cooling and corrupt vector state.
+**Prevention:** Sanitize config parameters in simulation constructors and config setters against `NaN`, `Infinity`, and non-positive/out-of-range values, falling back to safe defaults.

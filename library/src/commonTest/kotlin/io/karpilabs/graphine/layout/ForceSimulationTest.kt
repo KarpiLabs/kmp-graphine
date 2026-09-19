@@ -182,4 +182,38 @@ class ForceSimulationTest {
             assertTrue(!pos.y.isNaN() && !pos.y.isInfinite(), "y coordinate must be finite")
         }
     }
+
+    @Test
+    fun testSanitizesInvalidOrNonFiniteForceSimulationConfig() {
+        val nodes = listOf(
+            GraphNode("1", "A"),
+            GraphNode("2", "B"),
+        )
+        val edges = listOf(GraphEdge("1", "2"))
+        val initialPositions = mapOf(
+            "1" to Offset(0f, 0f),
+            "2" to Offset(100f, 0f),
+        )
+        val invalidConfig = ForceSimulationConfig(
+            alphaDecay = 0f,
+            repelStrength = Float.NaN,
+            centerStrength = Float.POSITIVE_INFINITY,
+            maxVelocity = -10f,
+        )
+
+        val sim = ForceSimulation(nodes, edges, invalidConfig, initialPositions)
+
+        var tickCount = 0
+        var isActive = true
+        while (isActive && tickCount < 1000) {
+            isActive = sim.tick(500f, 500f)
+            tickCount++
+        }
+
+        assertTrue(tickCount < 1000, "Simulation with zero or NaN alphaDecay must be sanitized and cool down")
+        val positions = sim.getPositions()
+        for ((_, pos) in positions) {
+            assertTrue(pos.x.isFinite() && pos.y.isFinite(), "Node coordinates must remain finite after config sanitization")
+        }
+    }
 }
