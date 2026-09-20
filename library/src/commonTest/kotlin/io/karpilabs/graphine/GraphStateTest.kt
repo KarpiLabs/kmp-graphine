@@ -357,4 +357,61 @@ class GraphStateTest {
             assertEquals(initialScale, state.scale)
         }
     }
+
+    @Test
+    fun testCoerceOffsetHandlesNonFiniteAndInvalidParametersSafely() {
+        val node = GraphNode("1", "Data")
+        val state = GraphState(initialNodes = listOf(node))
+
+        val result1 = state.coerceOffset(Offset(Float.NaN, 10f), 800f, 600f, 1f)
+        assertEquals(Offset.Zero, result1)
+
+        val result2 = state.coerceOffset(Offset(10f, 10f), Float.NaN, 600f, 1f)
+        assertEquals(Offset(10f, 10f), result2)
+
+        val result3 = state.coerceOffset(Offset(10f, 10f), 800f, 600f, Float.NaN)
+        assertEquals(Offset(10f, 10f), result3)
+
+        val result4 = state.coerceOffset(Offset(10f, 10f), 800f, 600f, -1f)
+        assertEquals(Offset(10f, 10f), result4)
+    }
+
+    @Test
+    fun testComputeFitBoundsHandlesNaNTrimAndNonFinitePositionsSafely() {
+        val node1 = GraphNode("1", "Data1")
+        val node2 = GraphNode("2", "Data2")
+        val state = GraphState(initialNodes = listOf(node1, node2))
+        state.onNodeDragged("1", Offset(100f, 100f))
+
+        // Trim fraction NaN should fall back safely to 0f without throwing IllegalArgumentException
+        val boundsWithNaNTrim = state.computeFitBounds(Float.NaN)
+        assertEquals(Rect(100f, 100f, 100f, 100f), boundsWithNaNTrim)
+
+        // Non-finite positions should be filtered out
+        state.onNodeDragged("2", Offset(Float.NaN, Float.POSITIVE_INFINITY))
+        val boundsWithNonFiniteNode = state.computeFitBounds()
+        assertEquals(Rect(100f, 100f, 100f, 100f), boundsWithNonFiniteNode)
+    }
+
+    @Test
+    fun testSnapToAndFitToScreenWithInvalidConfigScaleBounds() {
+        val node = GraphNode("1", "Data")
+        val state = GraphState(
+            initialNodes = listOf(node),
+            initialConfig = io.karpilabs.graphine.model.GraphConfig(
+                minScale = Float.NaN,
+                maxScale = -1f,
+            ),
+        )
+
+        runTest {
+            // snapTo should not throw IllegalArgumentException when bounds are invalid or NaN
+            state.snapTo(1f, Offset(10f, 10f))
+            assertTrue(state.scale.isFinite())
+
+            // fitToScreenAnimated should also handle fallback scale bounds safely
+            state.fitToScreenAnimated(800f, 600f, immediate = true)
+            assertTrue(state.scale.isFinite())
+        }
+    }
 }

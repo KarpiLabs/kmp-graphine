@@ -92,7 +92,9 @@ class GraphState<T>(
     suspend fun snapTo(targetScale: Float, targetOffset: Offset) {
         // Security guard: Ignore non-finite values (NaN / Infinity) to prevent UI state corruption or freeze
         if (!targetScale.isFiniteNumber() || !targetOffset.isFiniteOffset()) return
-        val s = targetScale.coerceIn(config.minScale, config.maxScale)
+        val minS = if (config.minScale.isFiniteNumber() && config.minScale > 0f) config.minScale else 0.1f
+        val maxS = if (config.maxScale.isFiniteNumber() && config.maxScale >= minS) config.maxScale else 5f
+        val s = targetScale.coerceIn(minS, maxS)
         scaleAnim.snapTo(s)
         offsetAnim.snapTo(targetOffset)
         scale = s
@@ -128,6 +130,8 @@ class GraphState<T>(
      * Constraints an offset to ensure the content remains within the viewport.
      */
     fun coerceOffset(offset: Offset, viewportWidth: Float, viewportHeight: Float, scale: Float): Offset {
+        if (!offset.isFiniteOffset()) return Offset.Zero
+        if (!viewportWidth.isFiniteNumber() || !viewportHeight.isFiniteNumber() || !scale.isFiniteNumber() || scale <= 0f) return offset
         val bounds = getContentBounds()
         if (bounds.isEmpty) return offset
 
@@ -137,7 +141,7 @@ class GraphState<T>(
         val contentTop = bounds.top * scale + offset.y
         val contentBottom = bounds.bottom * scale + offset.y
 
-        val padding = config.viewportPadding // Use dynamic padding
+        val padding = if (config.viewportPadding.isFiniteNumber() && config.viewportPadding >= 0f) config.viewportPadding else 100f
 
         var newX = offset.x
         var newY = offset.y
@@ -156,7 +160,8 @@ class GraphState<T>(
             newY = (viewportHeight - padding) - (bounds.top * scale)
         }
 
-        return Offset(newX, newY)
+        val result = Offset(newX, newY)
+        return if (result.isFiniteOffset()) result else Offset.Zero
     }
 
     /** Optional grid size for snapping (0 = disabled). */
@@ -292,8 +297,11 @@ class GraphState<T>(
         }
         if (!finalOffset.isFiniteOffset()) return@coroutineScope
 
+        val minS = if (config.minScale.isFiniteNumber() && config.minScale > 0f) config.minScale else 0.1f
+        val maxS = if (config.maxScale.isFiniteNumber() && config.maxScale >= minS) config.maxScale else 5f
+
         launch {
-            scaleAnim.animateTo(targetScale.coerceIn(0.1f, 5f), tween(500)) {
+            scaleAnim.animateTo(targetScale.coerceIn(minS, maxS), tween(500)) {
                 scale = value
             }
         }
@@ -331,13 +339,17 @@ class GraphState<T>(
         val minSpan = 80f
         val spanX = bounds.width.coerceAtLeast(minSpan)
         val spanY = bounds.height.coerceAtLeast(minSpan)
-        val contentWidth = spanX + padding * 2f
-        val contentHeight = spanY + padding * 2f
+        val safePadding = if (padding.isFinite() && padding >= 0f) padding else 150f
+        val contentWidth = spanX + safePadding * 2f
+        val contentHeight = spanY + safePadding * 2f
+
+        val minS = if (config.minScale.isFiniteNumber() && config.minScale > 0f) config.minScale else 0.1f
+        val maxS = if (config.maxScale.isFiniteNumber() && config.maxScale >= minS) config.maxScale else 5f
 
         val targetScale = minOf(
             viewportWidth / contentWidth,
             viewportHeight / contentHeight,
-        ).coerceIn(config.minScale, config.maxScale.coerceAtMost(3f))
+        ).coerceIn(minS, maxS.coerceAtMost(3f))
 
         val centerX = bounds.left + bounds.width / 2f
         val centerY = bounds.top + bounds.height / 2f
@@ -368,10 +380,10 @@ class GraphState<T>(
      * (e.g. a decorative ring) do not force the camera to zoom out too far.
      */
     fun computeFitBounds(trimFraction: Float = 0f): Rect? {
-        val points = _nodeStates.values.map { it.position }
+        val points = _nodeStates.values.map { it.position }.filter { it.isFiniteOffset() }
         if (points.isEmpty()) return null
 
-        val trim = trimFraction.coerceIn(0f, 0.45f)
+        val trim = if (trimFraction.isFiniteNumber()) trimFraction.coerceIn(0f, 0.45f) else 0f
         if (trim <= 0f || points.size < 8) {
             var minX = Float.MAX_VALUE
             var minY = Float.MAX_VALUE
