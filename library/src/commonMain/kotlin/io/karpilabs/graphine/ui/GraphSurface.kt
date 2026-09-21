@@ -318,6 +318,7 @@ fun <T> GraphSurface(
 
                     val pathAlpha = if (isHighlighted) 1.0f else 0.1f
                     val baseColor = edgeConfig.color.copy(alpha = edgeConfig.color.alpha * pathAlpha)
+                    val safeEdgeWidth = if (edgeConfig.width.isFinite() && edgeConfig.width >= 0f) edgeConfig.width else 2f
 
                     when (edgeConfig.style) {
                         EdgeStyle.STRAIGHT -> {
@@ -330,7 +331,7 @@ fun <T> GraphSurface(
                                     path = path,
                                     color = baseColor,
                                     style = Stroke(
-                                        width = edgeConfig.width,
+                                        width = safeEdgeWidth,
                                         cap = edgeConfig.strokeCap,
                                         pathEffect = edgeConfig.pathEffect,
                                     ),
@@ -340,7 +341,7 @@ fun <T> GraphSurface(
                                     color = baseColor,
                                     start = fromPos,
                                     end = toPos,
-                                    strokeWidth = edgeConfig.width,
+                                    strokeWidth = safeEdgeWidth,
                                     cap = edgeConfig.strokeCap,
                                     pathEffect = edgeConfig.pathEffect,
                                 )
@@ -371,7 +372,7 @@ fun <T> GraphSurface(
                                 path = path,
                                 brush = brush,
                                 style = Stroke(
-                                    width = edgeConfig.width,
+                                    width = safeEdgeWidth,
                                     cap = edgeConfig.strokeCap,
                                     pathEffect = edgeConfig.pathEffect,
                                 ),
@@ -397,7 +398,7 @@ fun <T> GraphSurface(
                                 path = path,
                                 color = baseColor,
                                 style = Stroke(
-                                    width = edgeConfig.width,
+                                    width = safeEdgeWidth,
                                     cap = edgeConfig.strokeCap,
                                     pathEffect = edgeConfig.pathEffect,
                                 ),

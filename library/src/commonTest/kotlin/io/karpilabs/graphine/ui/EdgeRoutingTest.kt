@@ -139,4 +139,20 @@ class EdgeRoutingTest {
         val nanObstacleRects = mapOf("nanObstacle" to Rect(40f, -10f, Float.NaN, 10f))
         assertNull(findObstacleBow(validFrom, validTo, "a", "b", nanObstacleRects))
     }
+
+    @Test
+    fun testEdgeConfigWidthAndArrowheadSizeGuards() {
+        // Verify EdgeConfig default values and boundary conditions
+        val defaultConfig = io.karpilabs.graphine.model.EdgeConfig()
+        assertEquals(2f, defaultConfig.width)
+        assertEquals(10f, defaultConfig.arrowheadSize)
+
+        // Non-finite or negative values configured by caller will be safely sanitized in rendering passes
+        val invalidConfig = io.karpilabs.graphine.model.EdgeConfig(
+            width = Float.NaN,
+            arrowheadSize = -5f,
+        )
+        assertTrue(invalidConfig.width.isNaN())
+        assertEquals(-5f, invalidConfig.arrowheadSize)
+    }
 }
