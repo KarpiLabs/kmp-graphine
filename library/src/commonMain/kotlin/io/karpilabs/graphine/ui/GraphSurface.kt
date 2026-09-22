@@ -149,8 +149,8 @@ fun <T> GraphSurface(
 
         val oldScale = state.scale
         val newScale = (state.scale * zoomChange).coerceIn(
-            state.config.minScale,
-            state.config.maxScale,
+            state.config.safeMinScale,
+            state.config.safeMaxScale,
         )
 
         // Calculate translation needed to keep the pivot point stationary in content space
@@ -178,7 +178,7 @@ fun <T> GraphSurface(
         }
     }
 
-    val isDetailVisible = state.scale > state.config.detailZoomThreshold
+    val isDetailVisible = state.scale > state.config.safeDetailZoomThreshold
 
     Box(
         modifier = modifier

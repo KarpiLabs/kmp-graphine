@@ -357,4 +357,30 @@ class GraphStateTest {
             assertEquals(initialScale, state.scale)
         }
     }
+
+    @Test
+    fun testInvalidGraphConfigDoesNotCrashState() {
+        val node = GraphNode("1", "Data")
+        val invalidConfig = io.karpilabs.graphine.model.GraphConfig(
+            minScale = Float.NaN,
+            maxScale = -5f,
+            viewportPadding = -20f,
+            fitToScreenPadding = Float.NaN,
+        )
+        val state = GraphState(
+            initialNodes = listOf(node),
+            initialConfig = invalidConfig,
+        )
+
+        runTest {
+            state.snapTo(10f, Offset(10f, 10f))
+            assertEquals(5f, state.scale)
+
+            state.fitToScreenAnimated(1000f, 1000f, immediate = true)
+            assertTrue(state.scale.isFinite() && state.scale > 0f)
+
+            val coerced = state.coerceOffset(Offset(5000f, 5000f), 1000f, 1000f, 1f)
+            assertTrue(coerced.x.isFinite() && coerced.y.isFinite())
+        }
+    }
 }
