@@ -357,4 +357,31 @@ class GraphStateTest {
             assertEquals(initialScale, state.scale)
         }
     }
+
+    @Test
+    fun testInvalidOrInvertedGraphConfigDoesNotCrash() {
+        val node = GraphNode("1", "Data")
+        val invalidConfig = io.karpilabs.graphine.model.GraphConfig(
+            minScale = Float.NaN,
+            maxScale = -1f,
+            viewportPadding = Float.NEGATIVE_INFINITY,
+            fitToScreenPadding = Float.NaN,
+            detailZoomThreshold = Float.NaN,
+        )
+        val state = GraphState(initialNodes = listOf(node), initialConfig = invalidConfig)
+
+        runTest {
+            // snapTo should use safe bounds (0.1..5f) rather than throwing IllegalArgumentException in coerceIn
+            state.snapTo(2f, Offset(10f, 10f))
+            assertEquals(2f, state.scale)
+
+            // coerceOffset should handle safe viewport padding without throwing
+            val coerced = state.coerceOffset(Offset(100f, 100f), 1000f, 1000f, 1f)
+            assertTrue(coerced.x.isFinite() && coerced.y.isFinite())
+
+            // fitToScreenAnimated should execute safely without crashing
+            state.fitToScreenAnimated(1000f, 1000f)
+            assertTrue(state.scale.isFinite() && state.scale > 0f)
+        }
+    }
 }
