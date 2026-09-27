@@ -182,4 +182,34 @@ class ForceSimulationTest {
             assertTrue(!pos.y.isNaN() && !pos.y.isInfinite(), "y coordinate must be finite")
         }
     }
+
+    @Test
+    fun testSanitizesInvalidConfigParameters() {
+        val nodes = listOf(
+            GraphNode("1", "A"),
+            GraphNode("2", "B"),
+        )
+        val edges = listOf(GraphEdge("1", "2"))
+        val initialPositions = mapOf(
+            "1" to Offset(0f, 0f),
+            "2" to Offset(100f, 0f),
+        )
+
+        // Invalid config: alphaDecay = 0f (would cause infinite hot loop), maxVelocity = -10f
+        val invalidConfig = ForceSimulationConfig(
+            alphaDecay = 0f,
+            maxVelocity = -10f,
+            repelDistanceMax = Float.NaN,
+        )
+        val sim = ForceSimulation(nodes, edges, invalidConfig, initialPositions)
+
+        var tickCount = 0
+        var isActive = true
+        while (isActive && tickCount < 1000) {
+            isActive = sim.tick(500f, 500f)
+            tickCount++
+        }
+
+        assertTrue(tickCount < 1000, "Simulation should cool down due to sanitized alphaDecay")
+    }
 }
