@@ -71,9 +71,10 @@ data class ForceSimulationConfig(
 class ForceSimulation<T>(
     nodes: List<GraphNode<T>>,
     edges: List<GraphEdge>,
-    private var config: ForceSimulationConfig,
+    config: ForceSimulationConfig,
     initialPositions: Map<String, Offset>,
 ) {
+    private var config: ForceSimulationConfig = sanitizeConfig(config)
     private val n = nodes.size
     private val ids = Array(n) { nodes[it].id }
     private val indexOf: Map<String, Int> = buildMap(n) {
@@ -176,7 +177,28 @@ class ForceSimulation<T>(
 
     /** Replace simulation parameters without resetting node positions. */
     fun updateConfig(config: ForceSimulationConfig) {
-        this.config = config
+        this.config = sanitizeConfig(config)
+    }
+
+    private fun sanitizeConfig(config: ForceSimulationConfig): ForceSimulationConfig {
+        val center = if (config.centerStrength.isFinite() && config.centerStrength >= 0f) config.centerStrength else 0.1f
+        val repel = if (config.repelStrength.isFinite() && config.repelStrength >= 0f) config.repelStrength else 15000f
+        val linkStr = if (config.linkStrength.isFinite() && config.linkStrength >= 0f) config.linkStrength else 0.05f
+        val linkDist = if (config.linkDistance.isFinite() && config.linkDistance > 0f) config.linkDistance else 400f
+        val alphaDecay = if (config.alphaDecay.isFinite() && config.alphaDecay > 0f && config.alphaDecay < 1f) config.alphaDecay else 0.025f
+        val alphaMin = if (config.alphaMin.isFinite() && config.alphaMin > 0f && config.alphaMin < 1f) config.alphaMin else 0.001f
+        val repelMax = if (config.repelDistanceMax.isFinite() && config.repelDistanceMax > 0f) config.repelDistanceMax else 280f
+        val maxVel = if (config.maxVelocity.isFinite() && config.maxVelocity > 0f) config.maxVelocity else 40f
+        return ForceSimulationConfig(
+            centerStrength = center,
+            repelStrength = repel,
+            linkStrength = linkStr,
+            linkDistance = linkDist,
+            alphaDecay = alphaDecay,
+            alphaMin = alphaMin,
+            repelDistanceMax = repelMax,
+            maxVelocity = maxVel,
+        )
     }
 
     /**
