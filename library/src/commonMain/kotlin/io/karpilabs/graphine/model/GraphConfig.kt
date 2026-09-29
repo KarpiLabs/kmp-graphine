@@ -40,4 +40,42 @@ data class GraphConfig(
     val viewportPadding: Float = 100f,
     val fitToScreenPadding: Float = 150f,
     val groupConfig: GroupConfig = GroupConfig(),
-)
+) {
+    /**
+     * Returns a guaranteed finite and positive minimum scale threshold.
+     */
+    val safeMinScale: Float
+        get() {
+            val minS = if (minScale.isFinite() && minScale > 0f) minScale else 0.1f
+            val maxS = if (maxScale.isFinite() && maxScale > 0f) maxScale else 5.0f
+            return if (minS <= maxS) minS else maxS
+        }
+
+    /**
+     * Returns a guaranteed finite and positive maximum scale threshold.
+     */
+    val safeMaxScale: Float
+        get() {
+            val minS = if (minScale.isFinite() && minScale > 0f) minScale else 0.1f
+            val maxS = if (maxScale.isFinite() && maxScale > 0f) maxScale else 5.0f
+            return if (maxS >= minS) maxS else minS
+        }
+
+    /**
+     * Returns a guaranteed finite and non-negative viewport padding value.
+     */
+    val safeViewportPadding: Float
+        get() = if (viewportPadding.isFinite() && viewportPadding >= 0f) viewportPadding else 100f
+
+    /**
+     * Returns a guaranteed finite and non-negative fit-to-screen padding value.
+     */
+    val safeFitToScreenPadding: Float
+        get() = if (fitToScreenPadding.isFinite() && fitToScreenPadding >= 0f) fitToScreenPadding else 150f
+
+    /**
+     * Returns a guaranteed finite detail zoom threshold.
+     */
+    val safeDetailZoomThreshold: Float
+        get() = if (detailZoomThreshold.isFinite() && detailZoomThreshold >= 0f) detailZoomThreshold else 0.6f
+}
