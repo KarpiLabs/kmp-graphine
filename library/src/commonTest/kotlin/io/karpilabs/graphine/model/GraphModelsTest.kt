@@ -143,6 +143,11 @@ class GraphModelsTest {
         val config = GraphConfig()
         assertEquals(0.6f, config.detailZoomThreshold)
         assertEquals(100f, config.viewportPadding)
+        assertEquals(0.1f, config.safeMinScale)
+        assertEquals(5.0f, config.safeMaxScale)
+        assertEquals(100f, config.safeViewportPadding)
+        assertEquals(150f, config.safeFitToScreenPadding)
+        assertEquals(0.6f, config.safeDetailZoomThreshold)
     }
 
     @Test
@@ -153,6 +158,34 @@ class GraphModelsTest {
         )
         assertEquals(0.5f, config.detailZoomThreshold)
         assertEquals(100f, config.viewportPadding)
+    }
+
+    @Test
+    fun testGraphConfigSafeGettersWithInvalidInputs() {
+        val invalidConfig = GraphConfig(
+            detailZoomThreshold = Float.NaN,
+            minScale = Float.NaN,
+            maxScale = -1f,
+            viewportPadding = -50f,
+            fitToScreenPadding = Float.NEGATIVE_INFINITY,
+        )
+
+        assertEquals(0.1f, invalidConfig.safeMinScale)
+        assertEquals(5.0f, invalidConfig.safeMaxScale)
+        assertEquals(100f, invalidConfig.safeViewportPadding)
+        assertEquals(150f, invalidConfig.safeFitToScreenPadding)
+        assertEquals(0.6f, invalidConfig.safeDetailZoomThreshold)
+    }
+
+    @Test
+    fun testGraphConfigSafeGettersWithInvertedScaleRange() {
+        val invertedConfig = GraphConfig(
+            minScale = 10.0f,
+            maxScale = 2.0f,
+        )
+
+        assertEquals(2.0f, invertedConfig.safeMinScale)
+        assertEquals(10.0f, invertedConfig.safeMaxScale)
     }
 
     @Test
