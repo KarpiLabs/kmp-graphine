@@ -68,12 +68,34 @@ data class ForceSimulationConfig(
  * Call [tick] each frame. Returns true while still "hot" (alpha > alphaMin).
  * Call [reheat] on manual drag to gently re-energize neighbors.
  */
+private fun ForceSimulationConfig.sanitize(): ForceSimulationConfig {
+    val safeAlphaDecay = if (alphaDecay.isFinite() && alphaDecay > 0f) alphaDecay.coerceIn(0.0001f, 1f) else 0.025f
+    val safeAlphaMin = if (alphaMin.isFinite() && alphaMin > 0f) alphaMin.coerceIn(0.00001f, 0.5f) else 0.001f
+    val safeMaxVelocity = if (maxVelocity.isFinite() && maxVelocity > 0f) maxVelocity else 40f
+    val safeRepelDistanceMax = if (repelDistanceMax.isFinite() && repelDistanceMax > 0f) repelDistanceMax else 280f
+    val safeCenterStrength = if (centerStrength.isFinite() && centerStrength >= 0f) centerStrength else 0.1f
+    val safeRepelStrength = if (repelStrength.isFinite() && repelStrength >= 0f) repelStrength else 15000f
+    val safeLinkStrength = if (linkStrength.isFinite() && linkStrength >= 0f) linkStrength else 0.05f
+    val safeLinkDistance = if (linkDistance.isFinite() && linkDistance >= 0f) linkDistance else 400f
+    return copy(
+        alphaDecay = safeAlphaDecay,
+        alphaMin = safeAlphaMin,
+        maxVelocity = safeMaxVelocity,
+        repelDistanceMax = safeRepelDistanceMax,
+        centerStrength = safeCenterStrength,
+        repelStrength = safeRepelStrength,
+        linkStrength = safeLinkStrength,
+        linkDistance = safeLinkDistance,
+    )
+}
+
 class ForceSimulation<T>(
     nodes: List<GraphNode<T>>,
     edges: List<GraphEdge>,
-    private var config: ForceSimulationConfig,
+    config: ForceSimulationConfig,
     initialPositions: Map<String, Offset>,
 ) {
+    private var config: ForceSimulationConfig = config.sanitize()
     private val n = nodes.size
     private val ids = Array(n) { nodes[it].id }
     private val indexOf: Map<String, Int> = buildMap(n) {
@@ -176,7 +198,7 @@ class ForceSimulation<T>(
 
     /** Replace simulation parameters without resetting node positions. */
     fun updateConfig(config: ForceSimulationConfig) {
-        this.config = config
+        this.config = config.sanitize()
     }
 
     /**

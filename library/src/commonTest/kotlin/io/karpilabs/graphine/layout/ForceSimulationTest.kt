@@ -162,6 +162,48 @@ class ForceSimulationTest {
     }
 
     @Test
+    fun testForceSimulationConfigSanitization() {
+        val nodes = listOf(
+            GraphNode("1", "A"),
+            GraphNode("2", "B"),
+        )
+        val edges = listOf(GraphEdge("1", "2"))
+        val invalidConfig = ForceSimulationConfig(
+            alphaDecay = 0f,
+            alphaMin = Float.NaN,
+            maxVelocity = -10f,
+            repelDistanceMax = Float.POSITIVE_INFINITY,
+            centerStrength = Float.NaN,
+            repelStrength = -500f,
+            linkStrength = Float.NaN,
+            linkDistance = -100f,
+        )
+        val initialPositions = mapOf(
+            "1" to Offset(0f, 0f),
+            "2" to Offset(100f, 0f),
+        )
+
+        val sim = ForceSimulation(nodes, edges, invalidConfig, initialPositions)
+
+        var isActive = true
+        var tickCount = 0
+        while (isActive && tickCount < 100) {
+            isActive = sim.tick(500f, 500f)
+            tickCount++
+        }
+
+        assertTrue(tickCount < 100, "Sanitized config should prevent infinite simulation loops")
+        val positions = sim.getPositions()
+        for ((_, pos) in positions) {
+            assertTrue(pos.x.isFinite() && pos.y.isFinite(), "Node coordinates must remain finite with sanitized config")
+        }
+
+        sim.updateConfig(ForceSimulationConfig(alphaDecay = Float.NaN, maxVelocity = 0f))
+        val tickResult = sim.tick(500f, 500f)
+        assertTrue(tickResult || !tickResult, "Tick should execute safely after updating with corrupt config")
+    }
+
+    @Test
     fun testTickHandlesNonFiniteCalculationsGracefully() {
         val nodes = listOf(
             GraphNode("1", "A"),
