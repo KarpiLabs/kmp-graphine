@@ -19,6 +19,7 @@ package io.karpilabs.graphine
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.unit.IntSize
+import io.karpilabs.graphine.model.GraphConfig
 import io.karpilabs.graphine.model.GraphEdge
 import io.karpilabs.graphine.model.GraphNode
 import kotlinx.coroutines.test.runTest
@@ -330,6 +331,49 @@ class GraphStateTest {
             assertEquals(initialOffset, state.offset)
             assertEquals(initialScale, state.scale)
         }
+    }
+
+    @Test
+    fun testInvertedOrNonFiniteGraphConfigHandledSafely() {
+        val invalidConfig = GraphConfig(
+            minScale = 5f,
+            maxScale = 1f,
+            viewportPadding = Float.NaN,
+            fitToScreenPadding = -20f,
+            detailZoomThreshold = Float.NaN,
+        )
+        assertEquals(5f, invalidConfig.safeMinScale)
+        assertEquals(5f, invalidConfig.safeMaxScale)
+        assertEquals(100f, invalidConfig.safeViewportPadding)
+        assertEquals(150f, invalidConfig.safeFitToScreenPadding)
+        assertEquals(0.6f, invalidConfig.safeDetailZoomThreshold)
+
+        val nanConfig = GraphConfig(
+            minScale = Float.NaN,
+            maxScale = Float.NaN,
+        )
+        assertEquals(0.1f, nanConfig.safeMinScale)
+        assertEquals(5f, nanConfig.safeMaxScale)
+
+        val node = GraphNode("1", "Data")
+        val state = GraphState(initialNodes = listOf(node), initialConfig = invalidConfig)
+        runTest {
+            state.snapTo(1f, Offset.Zero)
+            assertEquals(5f, state.scale)
+        }
+    }
+
+    @Test
+    fun testComputeFitBoundsHandlesNonFinitePositionsSafely() {
+        val node1 = GraphNode("1", "A")
+        val node2 = GraphNode("2", "B")
+        val state = GraphState(initialNodes = listOf(node1, node2))
+
+        state.onNodeDragged("1", Offset(100f, 200f))
+        state.onNodeDragged("2", Offset(Float.NaN, Float.NaN))
+
+        val bounds = state.computeFitBounds()
+        assertEquals(Rect(100f, 200f, 100f, 200f), bounds)
     }
 
     @Test
