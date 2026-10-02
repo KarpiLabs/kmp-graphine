@@ -22,3 +22,8 @@
 **Vulnerability:** Initializing upper bound tracking variables (`maxX`, `maxY`) to `Float.MIN_VALUE` caused bounding box calculations (`getContentBounds`, `computeFitBounds`, group zones, minimap) to incorrectly expand `maxX` and `maxY` to `~0f` when all node coordinates were negative.
 **Learning:** In Kotlin and Java, `Float.MIN_VALUE` is `1.4E-45f` (the smallest positive non-zero float value), NOT `-Float.MAX_VALUE` or negative infinity.
 **Prevention:** Always initialize maximum bounding box search accumulators (`maxX`, `maxY`) to `-Float.MAX_VALUE` or `Float.NEGATIVE_INFINITY` when calculating coordinate bounds.
+
+## 2026-03-31 - Inverted and Non-Finite Scale Ranges in Graph Configuration
+**Vulnerability:** `GraphConfig` parameters like `minScale`, `maxScale`, and padding could be set to non-finite values (`NaN`/`Infinity`), negative values, or inverted ranges (`minScale > maxScale`). Calling `coerceIn(minScale, maxScale)` on camera gestures or animations threw unhandled `IllegalArgumentException` crashes that terminated the application UI thread.
+**Learning:** In Kotlin, `value.coerceIn(min, max)` throws `IllegalArgumentException` if `min > max` or if `min`/`max` are non-finite, making dynamic configuration objects vulnerable to crash DoS if inputs are unvalidated.
+**Prevention:** Always provide safe computed property accessors (`safeMinScale`, `safeMaxScale`) that validate bounds (`minScale <= maxScale` and finite positive numbers) before passing them to range coercion functions.
