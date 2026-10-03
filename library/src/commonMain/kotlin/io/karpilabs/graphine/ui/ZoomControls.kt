@@ -57,9 +57,7 @@ fun ZoomControls(
             scope.launch {
                 val safeScale = if (state.scale.isFinite() && state.scale > 0f) state.scale else 1f
                 val safeOffset = if (state.offset.x.isFinite() && state.offset.y.isFinite()) state.offset else Offset.Zero
-                val minS = if (state.config.minScale.isFinite() && state.config.minScale > 0f) state.config.minScale else 0.1f
-                val maxS = if (state.config.maxScale.isFinite() && state.config.maxScale > 0f) state.config.maxScale else 5f
-                val targetScale = (safeScale * 1.2f).coerceIn(minS, maxS)
+                val targetScale = (safeScale * 1.2f).coerceIn(state.config.safeMinScale, state.config.safeMaxScale)
                 state.animateTo(targetScale, safeOffset)
             }
         }) {
@@ -70,9 +68,7 @@ fun ZoomControls(
             scope.launch {
                 val safeScale = if (state.scale.isFinite() && state.scale > 0f) state.scale else 1f
                 val safeOffset = if (state.offset.x.isFinite() && state.offset.y.isFinite()) state.offset else Offset.Zero
-                val minS = if (state.config.minScale.isFinite() && state.config.minScale > 0f) state.config.minScale else 0.1f
-                val maxS = if (state.config.maxScale.isFinite() && state.config.maxScale > 0f) state.config.maxScale else 5f
-                val targetScale = (safeScale / 1.2f).coerceIn(minS, maxS)
+                val targetScale = (safeScale / 1.2f).coerceIn(state.config.safeMinScale, state.config.safeMaxScale)
                 state.animateTo(targetScale, safeOffset)
             }
         }) {
