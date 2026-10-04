@@ -160,4 +160,36 @@ class GraphModelsTest {
         assertEquals(NodeRenderMode.COMPOSABLE, NodeRenderMode.COMPOSABLE)
         assertEquals(NodeRenderMode.DOT, NodeRenderMode.DOT)
     }
+
+    @Test
+    fun testGraphConfigSafeGettersNormal() {
+        val config = GraphConfig(
+            minScale = 0.2f,
+            maxScale = 4f,
+            viewportPadding = 80f,
+            fitToScreenPadding = 120f,
+            detailZoomThreshold = 0.8f,
+        )
+        assertEquals(0.2f, config.safeMinScale)
+        assertEquals(4f, config.safeMaxScale)
+        assertEquals(80f, config.safeViewportPadding)
+        assertEquals(120f, config.safeFitToScreenPadding)
+        assertEquals(0.8f, config.safeDetailZoomThreshold)
+    }
+
+    @Test
+    fun testGraphConfigSafeGettersInvalidOrInverted() {
+        val config = GraphConfig(
+            minScale = 10f,
+            maxScale = 2f,
+            viewportPadding = Float.NaN,
+            fitToScreenPadding = -10f,
+            detailZoomThreshold = Float.POSITIVE_INFINITY,
+        )
+        assertEquals(2f, config.safeMinScale)
+        assertEquals(10f, config.safeMaxScale)
+        assertEquals(100f, config.safeViewportPadding)
+        assertEquals(150f, config.safeFitToScreenPadding)
+        assertEquals(0.6f, config.safeDetailZoomThreshold)
+    }
 }

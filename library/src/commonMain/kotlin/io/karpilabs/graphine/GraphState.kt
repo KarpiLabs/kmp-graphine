@@ -92,7 +92,7 @@ class GraphState<T>(
     suspend fun snapTo(targetScale: Float, targetOffset: Offset) {
         // Security guard: Ignore non-finite values (NaN / Infinity) to prevent UI state corruption or freeze
         if (!targetScale.isFiniteNumber() || !targetOffset.isFiniteOffset()) return
-        val s = targetScale.coerceIn(config.minScale, config.maxScale)
+        val s = targetScale.coerceIn(config.safeMinScale, config.safeMaxScale)
         scaleAnim.snapTo(s)
         offsetAnim.snapTo(targetOffset)
         scale = s
@@ -137,7 +137,7 @@ class GraphState<T>(
         val contentTop = bounds.top * scale + offset.y
         val contentBottom = bounds.bottom * scale + offset.y
 
-        val padding = config.viewportPadding // Use dynamic padding
+        val padding = config.safeViewportPadding // Use dynamic padding
 
         var newX = offset.x
         var newY = offset.y
@@ -318,7 +318,7 @@ class GraphState<T>(
     suspend fun fitToScreenAnimated(
         viewportWidth: Float,
         viewportHeight: Float,
-        padding: Float = config.fitToScreenPadding,
+        padding: Float = config.safeFitToScreenPadding,
         trimFraction: Float = 0f,
         immediate: Boolean = false,
     ) {
@@ -337,7 +337,7 @@ class GraphState<T>(
         val targetScale = minOf(
             viewportWidth / contentWidth,
             viewportHeight / contentHeight,
-        ).coerceIn(config.minScale, config.maxScale.coerceAtMost(3f))
+        ).coerceIn(config.safeMinScale, config.safeMaxScale.coerceAtMost(3f))
 
         val centerX = bounds.left + bounds.width / 2f
         val centerY = bounds.top + bounds.height / 2f
