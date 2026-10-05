@@ -40,4 +40,28 @@ data class GraphConfig(
     val viewportPadding: Float = 100f,
     val fitToScreenPadding: Float = 150f,
     val groupConfig: GroupConfig = GroupConfig(),
-)
+) {
+    /** Safe getter for minScale, ensuring a positive finite scale lower bound. */
+    val safeMinScale: Float
+        get() = if (minScale.isFinite() && minScale > 0f) minScale else 0.1f
+
+    /** Safe getter for maxScale, ensuring it is positive, finite, and >= safeMinScale. */
+    val safeMaxScale: Float
+        get() {
+            val minS = safeMinScale
+            val maxS = if (maxScale.isFinite() && maxScale > 0f) maxScale else 5f
+            return if (maxS >= minS) maxS else minS
+        }
+
+    /** Safe getter for viewportPadding, ensuring a non-negative finite padding value. */
+    val safeViewportPadding: Float
+        get() = if (viewportPadding.isFinite() && viewportPadding >= 0f) viewportPadding else 100f
+
+    /** Safe getter for fitToScreenPadding, ensuring a non-negative finite padding value. */
+    val safeFitToScreenPadding: Float
+        get() = if (fitToScreenPadding.isFinite() && fitToScreenPadding >= 0f) fitToScreenPadding else 150f
+
+    /** Safe getter for detailZoomThreshold, ensuring a positive finite zoom threshold. */
+    val safeDetailZoomThreshold: Float
+        get() = if (detailZoomThreshold.isFinite() && detailZoomThreshold > 0f) detailZoomThreshold else 0.6f
+}
