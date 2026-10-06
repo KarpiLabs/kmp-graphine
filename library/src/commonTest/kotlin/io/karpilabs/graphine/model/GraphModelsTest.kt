@@ -156,6 +156,29 @@ class GraphModelsTest {
     }
 
     @Test
+    fun testGraphConfigSafeGettersWithInvalidOrInvertedValues() {
+        val inverted = GraphConfig(
+            minScale = 5f,
+            maxScale = 0.2f,
+            viewportPadding = -50f,
+            fitToScreenPadding = -10f,
+            detailZoomThreshold = Float.NaN,
+        )
+        assertEquals(0.2f, inverted.safeMinScale)
+        assertEquals(5f, inverted.safeMaxScale)
+        assertEquals(100f, inverted.safeViewportPadding)
+        assertEquals(150f, inverted.safeFitToScreenPadding)
+        assertEquals(0.6f, inverted.safeDetailZoomThreshold)
+
+        val nonFinite = GraphConfig(
+            minScale = Float.NaN,
+            maxScale = Float.POSITIVE_INFINITY,
+        )
+        assertEquals(0.1f, nonFinite.safeMinScale)
+        assertEquals(5f, nonFinite.safeMaxScale)
+    }
+
+    @Test
     fun testNodeRenderModes() {
         assertEquals(NodeRenderMode.COMPOSABLE, NodeRenderMode.COMPOSABLE)
         assertEquals(NodeRenderMode.DOT, NodeRenderMode.DOT)
